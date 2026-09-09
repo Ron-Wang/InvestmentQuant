@@ -6,8 +6,10 @@
     <title>沪深300 PE百分位 · 分布分析</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js">
     </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+    </script>
     <style>
-        /* ===== 深色主题（与已有看板统一） ===== */
+        /* ===== 深色主题（统一风格） ===== */
         * {
             margin: 0;
             padding: 0;
@@ -23,6 +25,29 @@
         .container {
             max-width: 1440px;
             margin: 0 auto;
+        }
+
+        /* 加载状态 */
+        .loading {
+            text-align: center;
+            padding: 80px 20px;
+            color: #5a6a80;
+            font-size: 18px;
+        }
+        .loading .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #1f2a3a;
+            border-top-color: #f0c27f;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 16px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
         }
 
         /* 头部 */
@@ -51,41 +76,16 @@
             color: #8899b0;
             margin-top: 4px;
         }
-        .upload-area {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .upload-btn {
-            background: #1f2a3a;
-            color: #e6edf5;
-            border: none;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid #26303f;
-        }
-        .upload-btn:hover {
-            background: #2c3d52;
-            border-color: #f0c27f;
-        }
-        .file-info {
-            font-size: 13px;
-            color: #7a8aa0;
+        .header .badge {
             background: #1a2332;
             padding: 6px 16px;
             border-radius: 30px;
+            font-size: 13px;
+            color: #7a8aa0;
             border: 1px solid #26303f;
         }
 
-        /* KPI 卡片 */
+        /* KPI */
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -245,9 +245,6 @@
                 align-items: stretch;
                 gap: 12px;
             }
-            .upload-area {
-                justify-content: flex-start;
-            }
         }
         @media (max-width: 600px) {
             body {
@@ -267,95 +264,97 @@
 </head>
 <body>
     <div class="container">
-        <!-- 头部 -->
-        <div class="header">
-            <div>
-                <h1>📈 沪深300 · PE百分位分布</h1>
-                <div class="sub">上传包含百分位数据的CSV文件 · 自动生成分布、趋势与深度分析</div>
-            </div>
-            <div class="upload-area">
-                <span class="file-info" id="fileCount">未加载数据</span>
-                <button class="upload-btn" onclick="document.getElementById('folderInput').click()">
-                    📁 选择文件夹
-                </button>
-                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
-                    📄 选择多个CSV
-                </button>
-                <input type="file" id="folderInput" webkitdirectory multiple style="display:none" accept=".csv" onchange="handleFiles(event.target.files)">
-                <input type="file" id="fileInput" multiple style="display:none" accept=".csv" onchange="handleFiles(event.target.files)">
-            </div>
+        <!-- 加载提示 -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div>正在加载数据 (pe_data.xlsx) ...</div>
         </div>
 
-        <!-- KPI -->
-        <div class="kpi-grid" id="kpiContainer">
-            <div class="kpi-card"><div class="kpi-label">📅 最新日期</div><div class="kpi-value" id="kpiDate">--</div><div class="kpi-sub">数据快照</div></div>
-            <div class="kpi-card"><div class="kpi-label">📊 平均百分位</div><div class="kpi-value" id="kpiMean">--</div><div class="kpi-sub">全市场估值中枢</div></div>
-            <div class="kpi-card"><div class="kpi-label">📐 中位数百分位</div><div class="kpi-value" id="kpiMedian">--</div><div class="kpi-sub">典型个股估值水平</div></div>
-            <div class="kpi-card"><div class="kpi-label">⚖️ 高估/低估 比</div><div class="kpi-value" id="kpiRatio">--</div><div class="kpi-sub">>80% 高位 / <20% 低位</div></div>
-        </div>
-
-        <!-- 图表 -->
-        <div class="charts-grid">
-            <div class="chart-box">
-                <div class="chart-title">📉 分布密度曲线 (PDF)</div>
-                <div id="chartDist" class="chart-container"></div>
+        <!-- 看板 -->
+        <div id="dashboard" style="display:none;">
+            <div class="header">
+                <div>
+                    <h1>📈 沪深300 · PE百分位分布</h1>
+                    <div class="sub">自动加载同目录的 <strong>pe_data.xlsx</strong>（每个日期一个 Sheet）</div>
+                </div>
+                <span class="badge" id="fileInfo">加载中...</span>
             </div>
-            <div class="chart-box">
-                <div class="chart-title">📈 累积分布曲线 (CDF)</div>
-                <div id="chartCumulative" class="chart-container"></div>
+
+            <div class="kpi-grid" id="kpiContainer">
+                <div class="kpi-card"><div class="kpi-label">📅 最新日期</div><div class="kpi-value" id="kpiDate">--</div><div class="kpi-sub">数据快照</div></div>
+                <div class="kpi-card"><div class="kpi-label">📊 平均百分位</div><div class="kpi-value" id="kpiMean">--</div><div class="kpi-sub">全市场估值中枢</div></div>
+                <div class="kpi-card"><div class="kpi-label">📐 中位数百分位</div><div class="kpi-value" id="kpiMedian">--</div><div class="kpi-sub">典型个股估值水平</div></div>
+                <div class="kpi-card"><div class="kpi-label">⚖️ 高估/低估 比</div><div class="kpi-value" id="kpiRatio">--</div><div class="kpi-sub">>80% 高位 / <20% 低位</div></div>
             </div>
-        </div>
 
-        <div class="chart-box full-width">
-            <div class="chart-title">📊 估值分位数趋势 (P10, P25, P50, P75, P90)</div>
-            <div id="chartTrend" class="chart-container trend"></div>
-        </div>
+            <div class="charts-grid">
+                <div class="chart-box">
+                    <div class="chart-title">📉 分布密度曲线 (PDF)</div>
+                    <div id="chartDist" class="chart-container"></div>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title">📈 累积分布曲线 (CDF)</div>
+                    <div id="chartCumulative" class="chart-container"></div>
+                </div>
+            </div>
 
-        <!-- 分析 -->
-        <div class="analysis-box" id="analysisBox">
-            <h2>🧠 最新情况深度分析</h2>
-            <div id="analysisContent">
-                <div class="no-data-msg">请上传包含沪深300百分位的CSV文件，仪表盘将自动生成分析。</div>
+            <div class="chart-box full-width">
+                <div class="chart-title">📊 估值分位数趋势 (P10, P25, P50, P75, P90)</div>
+                <div id="chartTrend" class="chart-container trend"></div>
+            </div>
+
+            <div class="analysis-box" id="analysisBox">
+                <h2>🧠 最新情况深度分析</h2>
+                <div id="analysisContent">
+                    <div class="no-data-msg">正在生成分析...</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         // ================================================================
-        //  数据存储与辅助函数（完全保留原有逻辑，仅调整视觉适配）
+        //  数据存储与辅助函数
         // ================================================================
         const allData = {};
 
-        function extractDateFromFilename(filename) {
-            const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
-            return match ? match[1] : null;
-        }
+        function parseExcelPE(buffer) {
+            const workbook = XLSX.read(buffer, { type: 'array' });
+            const sheets = {};
+            workbook.SheetNames.forEach(sheetName => {
+                const ws = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                if (json.length < 2) return;
+                // 第一行是表头，寻找列索引
+                const header = json[0].map(cell => String(cell).trim());
+                const idxName = header.indexOf('name');
+                const idxPct = header.indexOf('percentile');
+                const idxPe = header.indexOf('pe_ttm');
+                const idxPositive = header.indexOf('is_positive');
+                if (idxPct === -1 || idxName === -1) return;
 
-        function parseCSV(text) {
-            const lines = text.split('\n').filter(line => line.trim() !== '');
-            if (lines.length === 0) return [];
-            const header = lines[0].replace(/^\uFEFF/, '').split(',');
-            const idxName = header.indexOf('name');
-            const idxPct = header.indexOf('percentile');
-            const idxPe = header.indexOf('pe_ttm');
-            const idxPositive = header.indexOf('is_positive');
-            if (idxPct === -1 || idxName === -1) return [];
-
-            const results = [];
-            for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(',');
-                if (cols.length <= Math.max(idxPct, idxName)) continue;
-                const isPos = cols[idxPositive] ? cols[idxPositive].trim() : 'False';
-                if (isPos !== 'True') continue;
-                const pct = parseFloat(cols[idxPct]);
-                if (isNaN(pct) || pct < 0 || pct > 100) continue;
-                results.push({
-                    name: cols[idxName] || 'Unknown',
-                    percentile: pct,
-                    pe: parseFloat(cols[idxPe]) || 0
-                });
-            }
-            return results;
+                const stocks = [];
+                for (let i = 1; i < json.length; i++) {
+                    const row = json[i];
+                    if (row.length <= Math.max(idxPct, idxName)) continue;
+                    const isPos = idxPositive !== -1 ? String(row[idxPositive]).trim() : 'True';
+                    if (isPos !== 'True') continue;
+                    const pct = parseFloat(row[idxPct]);
+                    if (isNaN(pct) || pct < 0 || pct > 100) continue;
+                    stocks.push({
+                        name: String(row[idxName] || 'Unknown'),
+                        percentile: pct,
+                        pe: idxPe !== -1 ? parseFloat(row[idxPe]) || 0 : 0
+                    });
+                }
+                if (stocks.length > 0) {
+                    sheets[sheetName] = {
+                        percentiles: stocks.map(s => s.percentile),
+                        stocks: stocks
+                    };
+                }
+            });
+            return sheets;
         }
 
         function getStats(arr) {
@@ -368,14 +367,13 @@
             const p25 = sorted[Math.floor(n * 0.25)];
             const p75 = sorted[Math.floor(n * 0.75)];
             const p90 = sorted[Math.floor(n * 0.90)];
-            const std = Math.sqrt(sorted.reduce((s, v) => s + (v - mean) ** 2, 0) / n);
             const bins = Array(10).fill(0);
             sorted.forEach(v => {
                 const idx = Math.min(9, Math.floor(v / 10));
                 bins[idx] += 1;
             });
             const dist = bins.map(c => (c / n) * 100);
-            return { mean, median, p10, p25, p75, p90, std, dist, count: n, sorted };
+            return { mean, median, p10, p25, p75, p90, dist, count: n, sorted };
         }
 
         function getQuantiles(arr) {
@@ -392,92 +390,25 @@
         }
 
         // ================================================================
-        //  文件处理
+        //  图表渲染（深色主题）
         // ================================================================
-        function handleFiles(files) {
-            if (!files || files.length === 0) return;
-            const csvFiles = Array.from(files).filter(f => f.name.toLowerCase().endsWith('.csv'));
-            if (csvFiles.length === 0) {
-                alert('未找到CSV文件，请选择以 .csv 结尾的文件。');
-                return;
+        let chartInstances = {};
+
+        function getChart(id) {
+            const dom = document.getElementById(id);
+            if (!dom) return null;
+            if (!chartInstances[id]) {
+                chartInstances[id] = echarts.init(dom, 'dark');
+                window.addEventListener('resize', () => {
+                    if (chartInstances[id]) chartInstances[id].resize();
+                });
             }
-
-            let loaded = 0;
-            csvFiles.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const date = extractDateFromFilename(file.name);
-                    if (!date) {
-                        console.warn('无法从文件名提取日期:', file.name);
-                        loaded++;
-                        if (loaded === csvFiles.length) updateDashboard();
-                        return;
-                    }
-                    const text = e.target.result;
-                    const parsed = parseCSV(text);
-                    if (parsed.length > 0) {
-                        allData[date] = {
-                            percentiles: parsed.map(d => d.percentile),
-                            stocks: parsed
-                        };
-                    } else {
-                        console.warn('解析CSV无有效数据:', file.name);
-                    }
-                    loaded++;
-                    if (loaded === csvFiles.length) updateDashboard();
-                };
-                reader.readAsText(file);
-            });
-
-            document.getElementById('fileCount').innerText = `加载中... (${csvFiles.length} 个文件)`;
+            return chartInstances[id];
         }
 
-        // ================================================================
-        //  仪表盘更新
-        // ================================================================
-        function updateDashboard() {
-            const dates = Object.keys(allData).sort();
-            if (dates.length === 0) {
-                document.getElementById('fileCount').innerText = '未加载有效数据';
-                document.getElementById('kpiDate').innerText = '--';
-                document.getElementById('kpiMean').innerText = '--';
-                document.getElementById('kpiMedian').innerText = '--';
-                document.getElementById('kpiRatio').innerHTML = '--';
-                document.getElementById('analysisContent').innerHTML = '<div class="no-data-msg">暂无数据，请上传CSV文件。</div>';
-                document.getElementById('fileCount').innerText = '0 个日期';
-                return;
-            }
-
-            document.getElementById('fileCount').innerText = `${dates.length} 个日期`;
-
-            const latest = dates[dates.length - 1];
-            const latestData = allData[latest];
-            const pcts = latestData.percentiles;
-            const stats = getStats(pcts);
-            const stocks = latestData.stocks;
-
-            document.getElementById('kpiDate').innerText = latest;
-            document.getElementById('kpiMean').innerText = stats.mean.toFixed(1) + '%';
-            document.getElementById('kpiMedian').innerText = stats.median.toFixed(1) + '%';
-
-            const highCount = pcts.filter(p => p > 80).length;
-            const lowCount = pcts.filter(p => p < 20).length;
-            const ratio = lowCount === 0 ? '∞' : (highCount / lowCount).toFixed(2);
-            document.getElementById('kpiRatio').innerHTML =
-                `${highCount}/${lowCount} <span style="font-size:14px;font-weight:400;color:#5a6a80;">(高/低)</span>`;
-
-            renderDistChart(dates);
-            renderCumulativeChart(dates);
-            renderTrendChart(dates);
-            renderAnalysis(latest, stats, stocks);
-        }
-
-        // ================================================================
-        //  图表渲染（ECharts 使用深色主题，自定义配色）
-        // ================================================================
         function renderDistChart(dates) {
-            const dom = document.getElementById('chartDist');
-            const myChart = echarts.init(dom, 'dark');
+            const chart = getChart('chartDist');
+            if (!chart) return;
             const option = {
                 tooltip: {
                     trigger: 'axis',
@@ -493,7 +424,7 @@
                     }
                 },
                 legend: { data: dates, type: 'scroll', bottom: 0, icon: 'circle', itemWidth: 8,
-                textStyle: { color: '#b8c9dd' } },
+                    textStyle: { color: '#b8c9dd' } },
                 grid: { left: '3%', right: '4%', bottom: '22%', top: '5%', containLabel: true },
                 xAxis: {
                     type: 'value',
@@ -534,13 +465,13 @@
                     };
                 })
             };
-            myChart.setOption(option);
-            window.addEventListener('resize', () => myChart.resize());
+            chart.setOption(option, true);
+            chart.resize();
         }
 
         function renderCumulativeChart(dates) {
-            const dom = document.getElementById('chartCumulative');
-            const myChart = echarts.init(dom, 'dark');
+            const chart = getChart('chartCumulative');
+            if (!chart) return;
             const option = {
                 tooltip: {
                     trigger: 'axis',
@@ -556,7 +487,7 @@
                     }
                 },
                 legend: { data: dates, type: 'scroll', bottom: 0, icon: 'circle', itemWidth: 8,
-                textStyle: { color: '#b8c9dd' } },
+                    textStyle: { color: '#b8c9dd' } },
                 grid: { left: '3%', right: '4%', bottom: '22%', top: '5%', containLabel: true },
                 xAxis: {
                     type: 'value',
@@ -603,13 +534,13 @@
                     };
                 })
             };
-            myChart.setOption(option);
-            window.addEventListener('resize', () => myChart.resize());
+            chart.setOption(option, true);
+            chart.resize();
         }
 
         function renderTrendChart(dates) {
-            const dom = document.getElementById('chartTrend');
-            const myChart = echarts.init(dom, 'dark');
+            const chart = getChart('chartTrend');
+            if (!chart) return;
             const p10 = [],
                 p25 = [],
                 p50 = [],
@@ -707,20 +638,47 @@
                     symbol: 'none'
                 }]
             };
-            myChart.setOption(option);
-            window.addEventListener('resize', () => myChart.resize());
+            chart.setOption(option, true);
+            chart.resize();
         }
 
         // ================================================================
-        //  深度分析渲染（深色风格）
+        //  更新仪表盘
         // ================================================================
-        function renderAnalysis(latest, stats, stocks) {
-            const container = document.getElementById('analysisContent');
-            if (!stocks || stocks.length === 0) {
-                container.innerHTML = '<div class="no-data-msg">最新日期数据不完整。</div>';
+        function updateDashboard() {
+            const dates = Object.keys(allData).sort();
+            if (dates.length === 0) {
+                document.getElementById('loading').innerHTML =
+                    '<div style="color:#fc6b6b;font-size:20px;">⚠️ 未找到有效数据</div>' +
+                    '<div style="color:#8899b0;margin-top:12px;">请确保 <strong>pe_data.xlsx</strong> 与当前页面在同一目录，且每个 Sheet 名称是日期。</div>';
                 return;
             }
 
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            document.getElementById('fileInfo').textContent = `${dates.length} 个日期`;
+
+            const latest = dates[dates.length - 1];
+            const latestData = allData[latest];
+            const pcts = latestData.percentiles;
+            const stats = getStats(pcts);
+            const stocks = latestData.stocks;
+
+            document.getElementById('kpiDate').innerText = latest;
+            document.getElementById('kpiMean').innerText = stats.mean.toFixed(1) + '%';
+            document.getElementById('kpiMedian').innerText = stats.median.toFixed(1) + '%';
+
+            const highCount = pcts.filter(p => p > 80).length;
+            const lowCount = pcts.filter(p => p < 20).length;
+            const ratio = lowCount === 0 ? '∞' : (highCount / lowCount).toFixed(2);
+            document.getElementById('kpiRatio').innerHTML =
+                `${highCount}/${lowCount} <span style="font-size:14px;font-weight:400;color:#5a6a80;">(高/低)</span>`;
+
+            renderDistChart(dates);
+            renderCumulativeChart(dates);
+            renderTrendChart(dates);
+
+            // 深度分析
             const sorted = [...stocks].sort((a, b) => a.percentile - b.percentile);
             const low = sorted.filter(s => s.percentile < 10);
             const high = sorted.filter(s => s.percentile > 90);
@@ -735,16 +693,16 @@
             const pctLow20 = (stats.sorted.filter(v => v < 20).length / stats.count * 100).toFixed(1);
             const pctHigh80 = (stats.sorted.filter(v => v > 80).length / stats.count * 100).toFixed(1);
             const status = stats.median > 60 ? '偏高估区域' : (stats.median > 40 ? '中性区域' : '偏低估区域');
-            const ratio = (stats.sorted.filter(v => v > 80).length / Math.max(1, stats.sorted.filter(v => v < 20).length))
-            .toFixed(2);
+            const ratioDisplay = (stats.sorted.filter(v => v > 80).length / Math.max(1, stats.sorted.filter(v => v < 20)
+                .length)).toFixed(2);
 
-            const html = `
+            document.getElementById('analysisContent').innerHTML = `
                 <div class="analysis-flex">
                     <div class="analysis-text">
                         <p><strong>📅 最新快照：${latest}</strong></p>
                         <p>🔹 全市场平均百分位为 <strong>${stats.mean.toFixed(1)}%</strong>，中位数为 <strong>${stats.median.toFixed(1)}%</strong>，整体处于 <strong>${status}</strong>。</p>
                         <p>🔹 当前有 <strong>${pctLow20}%</strong> 的股票处于历史低位（<20%），而有 <strong>${pctHigh80}%</strong> 的股票处于历史高位（>80%）。</p>
-                        <p>🔹 高估/低估比率为 <strong>${ratio}</strong>，表明市场情绪偏向于 <strong>${parseFloat(pctHigh80) > parseFloat(pctLow20) ? '高估（需谨慎）' : '低估（可关注）'}</strong>。</p>
+                        <p>🔹 高估/低估比率为 <strong>${ratioDisplay}</strong>，表明市场情绪偏向于 <strong>${parseFloat(pctHigh80) > parseFloat(pctLow20) ? '高估（需谨慎）' : '低估（可关注）'}</strong>。</p>
                         <p style="color:#7a8aa0; font-size:13px; margin-top:8px;">* 百分位越低代表估值越接近历史底部，反之则接近历史顶部。</p>
                     </div>
                     <div class="extreme-list">
@@ -759,16 +717,34 @@
                     </div>
                 </div>
             `;
-            container.innerHTML = html;
         }
 
         // ================================================================
-        //  初始化
+        //  主加载：自动读取 pe_data.xlsx
         // ================================================================
-        document.getElementById('fileCount').innerText = '等待上传...';
-
-        // 全局暴露 handleFiles
-        window.handleFiles = handleFiles;
+        fetch('pe_data.xlsx')
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status} — 文件不存在`);
+                return res.arrayBuffer();
+            })
+            .then(buffer => {
+                const sheets = parseExcelPE(buffer);
+                if (Object.keys(sheets).length === 0) {
+                    throw new Error('Excel 中未找到有效数据（需要包含 name 和 percentile 列）');
+                }
+                Object.assign(allData, sheets);
+                updateDashboard();
+            })
+            .catch(err => {
+                document.getElementById('loading').innerHTML =
+                    '<div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>' +
+                    '<div style="color:#8899b0;margin-top:12px;">' + err.message + '</div>' +
+                    '<div style="color:#5a6a80;margin-top:8px;font-size:14px;">' +
+                    '请将 <strong>pe_data.xlsx</strong> 与当前页面放在同一目录，<br>' +
+                    '每个 Sheet 名称为日期（如 2025-03-31），包含列：name, percentile, pe_ttm（可选）, is_positive（可选）。' +
+                    '</div>';
+                console.error(err);
+            });
     </script>
 </body>
 </html>
