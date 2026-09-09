@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>主动权益基金 · 行业仓位测算</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+    </script>
     <style>
         /* ===== 深色主题（与银行策略看板统一） ===== */
         * {
@@ -321,428 +323,464 @@
 </head>
 <body>
 
-<div class="container">
-    <!-- 加载 -->
-    <div id="loading" class="loading">
-        <div class="spinner"></div>
-        <div>正在加载数据 ...</div>
-    </div>
+    <div class="container">
+        <!-- 加载 -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div>正在加载数据 ...</div>
+        </div>
 
-    <!-- 看板 -->
-    <div id="dashboard" class="hidden">
-        <header class="header">
-            <div class="header-left">
-                <h1><i class="fas fa-chart-pie" style="color:#f0c27f;margin-right:10px;"></i>主动权益 · 行业仓位测算</h1>
-                <div class="subtitle">
-                    <span>📂 数据文件：industry_avg_position.xlsx</span>
-                    <span id="dateRange"></span>
+        <!-- 看板 -->
+        <div id="dashboard" class="hidden">
+            <header class="header">
+                <div class="header-left">
+                    <h1><i class="fas fa-chart-pie" style="color:#f0c27f;margin-right:10px;"></i>主动权益 · 行业仓位测算</h1>
+                    <div class="subtitle">
+                        <span>📂 数据文件：data.xlsx</span>
+                        <span id="dateRange"></span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div><span class="highlight" id="fundCount">—</span> 只基金</div>
+                    <div style="font-size:12px;color:#5a6a80;">自动加载 · 同目录Excel</div>
+                </div>
+            </header>
+
+            <section class="kpi-grid" id="kpiGrid">
+                <div class="kpi-card">
+                    <div class="label">股票仓位</div>
+                    <div class="value positive" id="kpiStock">—</div>
+                    <div class="sub">权益类合计</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">债券仓位</div>
+                    <div class="value neutral" id="kpiBond">—</div>
+                    <div class="sub">中证全债</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">货币基金</div>
+                    <div class="value neutral" id="kpiMoney">—</div>
+                    <div class="sub">现金管理</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">第一大重仓</div>
+                    <div class="value" id="kpiTop1">—</div>
+                    <div class="sub">行业</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="label">第二大重仓</div>
+                    <div class="value" id="kpiTop2">—</div>
+                    <div class="sub">行业</div>
+                </div>
+            </section>
+
+            <div class="controls">
+                <label><i class="fas fa-tag"></i> 品种</label>
+                <select id="industrySelect"></select>
+                <label style="margin-left:auto;"><i class="fas fa-calendar-week"></i> 窗口</label>
+                <select id="windowSelect">
+                    <option value="30">近30天</option>
+                    <option value="60" selected>近60天</option>
+                    <option value="120">近120天</option>
+                    <option value="9999">全部</option>
+                </select>
+            </div>
+
+            <div class="chart-grid">
+                <div class="chart-box">
+                    <div class="chart-title"><span><i class="fas fa-chart-line" style="color:#f0c27f;"></i> 品种仓位趋势</span><span class="subtitle" id="trendSub">选择品种</span></div>
+                    <div class="chart-container tall" id="trendChart"></div>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title"><span><i class="fas fa-tree" style="color:#4cd9a0;"></i> 最新行业分布</span><span class="subtitle">树状图</span></div>
+                    <div class="chart-container tall" id="treemapChart"></div>
                 </div>
             </div>
-            <div class="header-right">
-                <div><span class="highlight" id="fundCount">—</span> 只基金</div>
-                <div style="font-size:12px;color:#5a6a80;">自动加载 · 同目录Excel</div>
-            </div>
-        </header>
 
-        <section class="kpi-grid" id="kpiGrid">
-            <div class="kpi-card"><div class="label">股票仓位</div><div class="value positive" id="kpiStock">—</div><div class="sub">权益类合计</div></div>
-            <div class="kpi-card"><div class="label">债券仓位</div><div class="value neutral" id="kpiBond">—</div><div class="sub">中证全债</div></div>
-            <div class="kpi-card"><div class="label">货币基金</div><div class="value neutral" id="kpiMoney">—</div><div class="sub">现金管理</div></div>
-            <div class="kpi-card"><div class="label">第一大重仓</div><div class="value" id="kpiTop1">—</div><div class="sub">行业</div></div>
-            <div class="kpi-card"><div class="label">第二大重仓</div><div class="value" id="kpiTop2">—</div><div class="sub">行业</div></div>
-        </section>
-
-        <div class="controls">
-            <label><i class="fas fa-tag"></i> 品种</label>
-            <select id="industrySelect"></select>
-            <label style="margin-left:auto;"><i class="fas fa-calendar-week"></i> 窗口</label>
-            <select id="windowSelect">
-                <option value="30">近30天</option>
-                <option value="60" selected>近60天</option>
-                <option value="120">近120天</option>
-                <option value="9999">全部</option>
-            </select>
-        </div>
-
-        <div class="chart-grid">
-            <div class="chart-box">
-                <div class="chart-title"><span><i class="fas fa-chart-line" style="color:#f0c27f;"></i> 品种仓位趋势</span><span class="subtitle" id="trendSub">选择品种</span></div>
-                <div class="chart-container tall" id="trendChart"></div>
+            <div class="chart-grid">
+                <div class="chart-box">
+                    <div class="chart-title"><span><i class="fas fa-chart-bar" style="color:#4a90d9;"></i> 各基金类型对比</span><span class="subtitle">最新一期</span></div>
+                    <div class="chart-container tall" id="compareChart"></div>
+                </div>
+                <div class="chart-box">
+                    <div class="chart-title"><span><i class="fas fa-fire" style="color:#fc5c7d;"></i> 行业仓位热力</span><span class="subtitle">颜色越深仓位越高</span></div>
+                    <div class="chart-container tall" id="heatmapChart"></div>
+                </div>
             </div>
-            <div class="chart-box">
-                <div class="chart-title"><span><i class="fas fa-tree" style="color:#4cd9a0;"></i> 最新行业分布</span><span class="subtitle">树状图</span></div>
-                <div class="chart-container tall" id="treemapChart"></div>
-            </div>
-        </div>
 
-        <div class="chart-grid">
-            <div class="chart-box">
-                <div class="chart-title"><span><i class="fas fa-chart-bar" style="color:#4a90d9;"></i> 各基金类型对比</span><span class="subtitle">最新一期</span></div>
-                <div class="chart-container tall" id="compareChart"></div>
+            <div class="table-wrap">
+                <div class="table-header"><span><i class="fas fa-table" style="color:#f0c27f;"></i> 详细数据</span><span style="font-size:12px;color:#5a6a80;">滚动查看全部行业</span></div>
+                <div class="table-scroll" id="tableScroll">
+                    <table>
+                        <thead id="tableHead"></thead>
+                        <tbody id="tableBody"></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="chart-box">
-                <div class="chart-title"><span><i class="fas fa-fire" style="color:#fc5c7d;"></i> 行业仓位热力</span><span class="subtitle">颜色越深仓位越高</span></div>
-                <div class="chart-container tall" id="heatmapChart"></div>
-            </div>
-        </div>
 
-        <div class="table-wrap">
-            <div class="table-header"><span><i class="fas fa-table" style="color:#f0c27f;"></i> 详细数据</span><span style="font-size:12px;color:#5a6a80;">滚动查看全部行业</span></div>
-            <div class="table-scroll" id="tableScroll">
-                <table>
-                    <thead id="tableHead"></thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
+            <div style="text-align:center;margin-top:24px;font-size:12px;color:#5a6a80;border-top:1px solid #1a222f;padding-top:20px;">
+                <i class="fas fa-sync-alt" style="margin-right:6px;"></i> 数据更新时间 <span id="dataUpdateTime">—</span>
             </div>
-        </div>
-
-        <div style="text-align:center;margin-top:24px;font-size:12px;color:#5a6a80;border-top:1px solid #1a222f;padding-top:20px;">
-            <i class="fas fa-sync-alt" style="margin-right:6px;"></i> 数据更新时间 <span id="dataUpdateTime">—</span>
         </div>
     </div>
-</div>
 
-<script>
-    // ================================================================
-    //  常量 & 状态
-    // ================================================================
-    const INDUSTRIES = [
-        '农林牧渔', '基础化工', '钢铁', '有色金属', '电子', '家用电器',
-        '食品饮料', '纺织服饰', '轻工制造', '医药生物', '公用事业', '交通运输',
-        '房地产', '商贸零售', '社会服务', '综合', '建筑材料', '建筑装饰',
-        '电力设备', '国防军工', '计算机', '传媒', '通信', '银行', '非银金融',
-        '汽车', '机械设备', '煤炭', '石油石化', '环保', '美容护理',
-        '中证全债', '货币基金'
-    ];
+    <script>
+        // ================================================================
+        //  常量 & 状态
+        // ================================================================
+        var INDUSTRIES = [
+            '农林牧渔', '基础化工', '钢铁', '有色金属', '电子', '家用电器',
+            '食品饮料', '纺织服饰', '轻工制造', '医药生物', '公用事业', '交通运输',
+            '房地产', '商贸零售', '社会服务', '综合', '建筑材料', '建筑装饰',
+            '电力设备', '国防军工', '计算机', '传媒', '通信', '银行', '非银金融',
+            '汽车', '机械设备', '煤炭', '石油石化', '环保', '美容护理',
+            '中证全债', '货币基金'
+        ];
 
-    let allSheetData = {};
-    let currentSheet = '';
-    let currentData = [];
-    let chartInstances = {};
+        var allSheetData = {};
+        var currentSheet = '';
+        var currentData = [];
+        var chartInstances = {};
 
-    const $ = id => document.getElementById(id);
-    const industrySelect = $('industrySelect');
-    const windowSelect = $('windowSelect');
+        var $ = function(id) { return document.getElementById(id); };
+        var industrySelect = $('industrySelect');
+        var windowSelect = $('windowSelect');
 
-    function formatPct(v) { return (v * 100).toFixed(2) + '%'; }
+        function formatPct(v) { return (v * 100).toFixed(2) + '%'; }
 
-    function getLatestRow(data) {
-        if (!data || data.length === 0) return null;
-        return data[data.length - 1];
-    }
-
-    function calcStockTotal(row) {
-        let sum = 0;
-        for (let i = 1; i <= 31; i++) sum += row[i] || 0;
-        return sum;
-    }
-
-    // ================================================================
-    //  解析 Excel（从 ArrayBuffer）
-    // ================================================================
-    function parseExcelData(buffer) {
-        const workbook = XLSX.read(buffer, { type: 'array' });
-        const sheets = {};
-        workbook.SheetNames.forEach(name => {
-            const ws = workbook.Sheets[name];
-            const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: 0 });
-            const rows = json.filter(row =>
-                row.length > 5 &&
-                typeof row[0] === 'string' &&
-                row[0].match(/^\d{4}-\d{2}-\d{2}/)
-            );
-            if (rows.length > 0) sheets[name] = rows;
-        });
-        return sheets;
-    }
-
-    // ================================================================
-    //  渲染
-    // ================================================================
-    function renderAll(sheetName) {
-        const data = allSheetData[sheetName];
-        if (!data || data.length === 0) return;
-        currentData = data;
-        currentSheet = sheetName;
-
-        const latest = getLatestRow(data);
-        if (latest) {
-            const fundCount = latest[latest.length - 1] || 0;
-            $('fundCount').textContent = fundCount;
-            $('dataUpdateTime').textContent = latest[0];
-            $('dateRange').textContent = '📅 ' + latest[0] + ' 更新';
+        function getLatestRow(data) {
+            if (!data || data.length === 0) return null;
+            return data[data.length - 1];
         }
 
-        updateKPI(latest);
-        populateSelect(data);
-        updateTrendChart(data);
-        updateTreemap(latest);
-        updateCompareChart();
-        updateHeatmapChart(data);
-        updateTable(data);
-
-        // 隐藏加载
-        $('loading').classList.add('hidden');
-        $('dashboard').classList.remove('hidden');
-    }
-
-    // ---- KPI ----
-    function updateKPI(row) {
-        if (!row) return;
-        const stockTotal = calcStockTotal(row);
-        const bond = row[32] || 0;
-        const money = row[33] || 0;
-        $('kpiStock').textContent = formatPct(stockTotal);
-        $('kpiBond').textContent = formatPct(bond);
-        $('kpiMoney').textContent = formatPct(money);
-
-        const sorted = INDUSTRIES.slice(0, 31).map((name, idx) => ({
-            name,
-            val: row[idx + 1] || 0
-        })).sort((a, b) => b.val - a.val);
-        if (sorted.length >= 2) {
-            $('kpiTop1').textContent = sorted[0].name + ' ' + formatPct(sorted[0].val);
-            $('kpiTop2').textContent = sorted[1].name + ' ' + formatPct(sorted[1].val);
+        function calcStockTotal(row) {
+            var sum = 0;
+            for (var i = 1; i <= 31; i++) {
+                sum += row[i] || 0;
+            }
+            return sum;
         }
-    }
 
-    // ---- 品种下拉 ----
-    function populateSelect(data) {
-        let options = '';
-        INDUSTRIES.forEach(name => {
-            options += `<option value="${name}">${name}</option>`;
-        });
-        industrySelect.innerHTML = options;
-        if (INDUSTRIES.includes('电子')) industrySelect.value = '电子';
-        industrySelect.onchange = function() { updateTrendChart(currentData, this.value); };
-    }
+        // ================================================================
+        //  解析 Excel（从 ArrayBuffer）
+        // ================================================================
+        function parseExcelData(buffer) {
+            var workbook = XLSX.read(buffer, { type: 'array' });
+            var sheets = {};
+            workbook.SheetNames.forEach(function(name) {
+                var ws = workbook.Sheets[name];
+                var json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: 0 });
+                var rows = json.filter(function(row) {
+                    return row.length > 5 &&
+                        typeof row[0] === 'string' &&
+                        row[0].match(/^\d{4}-\d{2}-\d{2}/);
+                });
+                if (rows.length > 0) sheets[name] = rows;
+            });
+            return sheets;
+        }
 
-    // ---- 趋势图 ----
-    function updateTrendChart(data, focusIndustry) {
-        const chart = getChart('trendChart');
-        if (!chart) return;
-        if (!focusIndustry) focusIndustry = industrySelect.value || '电子';
-        const windowSize = parseInt(windowSelect.value);
-        const slice = data.slice(-windowSize);
-        const dates = slice.map(row => row[0]);
-        const idx = INDUSTRIES.indexOf(focusIndustry);
-        if (idx === -1) return;
-        const values = slice.map(row => row[idx + 1] || 0);
-        const option = {
-            tooltip: { trigger: 'axis' },
-            legend: { data: [focusIndustry], textStyle: { color: '#c8d8e8' } },
-            grid: { left: '5%', right: '5%', bottom: '10%', top: '10%' },
-            xAxis: { type: 'category', data: dates, axisLabel: { rotate: 30, fontSize: 10, color: '#8899b0' } },
-            yAxis: { type: 'value', axisLabel: { formatter: '{value}%', color: '#8899b0' } },
-            series: [{
-                name: focusIndustry,
-                type: 'line',
-                data: values.map(v => +(v * 100).toFixed(2)),
-                smooth: true,
-                lineStyle: { width: 2, color: '#f0c27f' },
-                areaStyle: { opacity: 0.1, color: '#f0c27f' }
-            }]
-        };
-        chart.setOption(option, true);
-        chart.resize();
-    }
-
-    // ---- 树状图 ----
-    function updateTreemap(row) {
-        const chart = getChart('treemapChart');
-        if (!chart || !row) return;
-        const data = INDUSTRIES.map((name, i) => ({
-            name: name,
-            value: +(row[i + 1] * 100).toFixed(2)
-        })).filter(d => d.value > 0.01);
-        if (data.length === 0) data.push({ name: '无数据', value: 0.01 });
-        const option = {
-            tooltip: { formatter: p => `${p.name}<br/>仓位：${p.value}%` },
-            series: [{
-                type: 'treemap',
-                data: data,
-                leafDepth: 1,
-                label: { show: true, formatter: '{b}\n{c}%', fontSize: 10, color: '#e6edf5' },
-                itemStyle: { borderColor: '#0b0e17', borderWidth: 1, gapWidth: 1 },
-                color: ['#f0c27f', '#4cd9a0', '#4a90d9', '#fc5c7d', '#8b5cf6', '#f59e0b'],
-                roam: true
-            }]
-        };
-        chart.setOption(option, true);
-        chart.resize();
-    }
-
-    // ---- 对比图 ----
-    function updateCompareChart() {
-        const chart = getChart('compareChart');
-        if (!chart) return;
-        const sheets = Object.keys(allSheetData);
-        if (sheets.length === 0) return;
-        const allLatest = getLatestRow(allSheetData['全部基金'] || []);
-        if (!allLatest) return;
-        const top10 = INDUSTRIES.slice(0, 31).map((name, i) => ({
-            name,
-            val: allLatest[i + 1] || 0
-        })).sort((a, b) => b.val - a.val).slice(0, 10).map(d => d.name);
-
-        const seriesData = {};
-        sheets.forEach(sheetName => {
-            const data = allSheetData[sheetName];
+        // ================================================================
+        //  渲染
+        // ================================================================
+        function renderAll(sheetName) {
+            var data = allSheetData[sheetName];
             if (!data || data.length === 0) return;
-            const row = getLatestRow(data);
-            if (row) seriesData[sheetName] = row;
-        });
-        const legendData = Object.keys(seriesData);
-        const series = legendData.map(sheetName => {
-            const row = seriesData[sheetName];
-            const data = top10.map(industry => {
-                const idx = INDUSTRIES.indexOf(industry);
-                return +(row[idx + 1] * 100).toFixed(2);
-            });
-            return { name: sheetName, type: 'bar', data: data, barGap: '20%' };
-        });
-        const option = {
-            tooltip: { trigger: 'axis' },
-            legend: { data: legendData, textStyle: { color: '#c8d8e8' } },
-            grid: { left: '5%', right: '5%', bottom: '12%', top: '10%' },
-            xAxis: { type: 'category', data: top10, axisLabel: { rotate: 30, fontSize: 10, color: '#8899b0' } },
-            yAxis: { type: 'value', axisLabel: { formatter: '{value}%', color: '#8899b0' } },
-            series: series
-        };
-        chart.setOption(option, true);
-        chart.resize();
-    }
+            currentData = data;
+            currentSheet = sheetName;
 
-    // ---- 热力图 ----
-    function updateHeatmapChart(data) {
-        const chart = getChart('heatmapChart');
-        if (!chart || !data || data.length === 0) return;
-        const latest = getLatestRow(data);
-        if (!latest) return;
-        const sorted = INDUSTRIES.slice(0, 31).map((name, i) => ({
-            name,
-            val: latest[i + 1] || 0
-        })).sort((a, b) => b.val - a.val);
-        const top15 = sorted.slice(0, 15).map(d => d.name);
-        const windowSize = Math.min(20, data.length);
-        const slice = data.slice(-windowSize);
-        const dates = slice.map(row => row[0]);
-        const heatData = [];
-        top15.forEach((industry, j) => {
-            const idx = INDUSTRIES.indexOf(industry);
-            slice.forEach((row, i) => {
-                heatData.push([i, j, +(row[idx + 1] * 100).toFixed(2)]);
+            var latest = getLatestRow(data);
+            if (latest) {
+                var fundCount = latest[latest.length - 1] || 0;
+                $('fundCount').textContent = fundCount;
+                $('dataUpdateTime').textContent = latest[0];
+                $('dateRange').textContent = '📅 ' + latest[0] + ' 更新';
+            }
+
+            updateKPI(latest);
+            populateSelect(data);
+            updateTable(data);
+
+            // 隐藏加载，显示看板
+            $('loading').classList.add('hidden');
+            $('dashboard').classList.remove('hidden');
+
+            // ✅ 关键修复：延迟渲染图表，确保 DOM 完成布局
+            setTimeout(function() {
+                updateTrendChart(data);
+                updateTreemap(latest);
+                updateCompareChart();
+                updateHeatmapChart(data);
+            }, 120);
+        }
+
+        // ---- KPI ----
+        function updateKPI(row) {
+            if (!row) return;
+            var stockTotal = calcStockTotal(row);
+            var bond = row[32] || 0;
+            var money = row[33] || 0;
+            $('kpiStock').textContent = formatPct(stockTotal);
+            $('kpiBond').textContent = formatPct(bond);
+            $('kpiMoney').textContent = formatPct(money);
+
+            var sorted = INDUSTRIES.slice(0, 31).map(function(name, idx) {
+                return { name: name, val: row[idx + 1] || 0 };
+            }).sort(function(a, b) { return b.val - a.val; });
+            if (sorted.length >= 2) {
+                $('kpiTop1').textContent = sorted[0].name + ' ' + formatPct(sorted[0].val);
+                $('kpiTop2').textContent = sorted[1].name + ' ' + formatPct(sorted[1].val);
+            }
+        }
+
+        // ---- 品种下拉 ----
+        function populateSelect(data) {
+            var options = '';
+            INDUSTRIES.forEach(function(name) {
+                options += '<option value="' + name + '">' + name + '</option>';
             });
-        });
-        const option = {
-            tooltip: {
-                position: 'top',
-                formatter: function(params) {
-                    const date = dates[params.value[0]];
-                    const industry = top15[params.value[1]];
-                    return `${date}<br/>${industry}: ${params.value[2]}%`;
+            industrySelect.innerHTML = options;
+            if (INDUSTRIES.indexOf('电子') !== -1) industrySelect.value = '电子';
+            industrySelect.onchange = function() { updateTrendChart(currentData, this.value); };
+        }
+
+        // ---- 趋势图 ----
+        function updateTrendChart(data, focusIndustry) {
+            var chart = getChart('trendChart');
+            if (!chart) return;
+            if (!focusIndustry) focusIndustry = industrySelect.value || '电子';
+            var windowSize = parseInt(windowSelect.value);
+            var slice = data.slice(-windowSize);
+            var dates = slice.map(function(row) { return row[0]; });
+            var idx = INDUSTRIES.indexOf(focusIndustry);
+            if (idx === -1) return;
+            var values = slice.map(function(row) { return row[idx + 1] || 0; });
+            var option = {
+                tooltip: { trigger: 'axis' },
+                legend: { data: [focusIndustry], textStyle: { color: '#c8d8e8' } },
+                grid: { left: '5%', right: '5%', bottom: '10%', top: '10%' },
+                xAxis: { type: 'category', data: dates, axisLabel: { rotate: 30, fontSize: 10, color: '#8899b0' } },
+                yAxis: { type: 'value', axisLabel: { formatter: '{value}%', color: '#8899b0' } },
+                series: [{
+                    name: focusIndustry,
+                    type: 'line',
+                    data: values.map(function(v) { return +(v * 100).toFixed(2); }),
+                    smooth: true,
+                    lineStyle: { width: 2, color: '#f0c27f' },
+                    areaStyle: { opacity: 0.1, color: '#f0c27f' }
+                }]
+            };
+            chart.setOption(option, true);
+            chart.resize();
+        }
+
+        // ---- 树状图 ----
+        function updateTreemap(row) {
+            var chart = getChart('treemapChart');
+            if (!chart || !row) return;
+            var data = INDUSTRIES.map(function(name, i) {
+                return { name: name, value: +(row[i + 1] * 100).toFixed(2) };
+            }).filter(function(d) { return d.value > 0.01; });
+            if (data.length === 0) data.push({ name: '无数据', value: 0.01 });
+            var option = {
+                tooltip: { formatter: function(p) { return p.name + '<br/>仓位：' + p.value + '%'; } },
+                series: [{
+                    type: 'treemap',
+                    data: data,
+                    leafDepth: 1,
+                    label: { show: true, formatter: '{b}\n{c}%', fontSize: 10, color: '#e6edf5' },
+                    itemStyle: { borderColor: '#0b0e17', borderWidth: 1, gapWidth: 1 },
+                    color: ['#f0c27f', '#4cd9a0', '#4a90d9', '#fc5c7d', '#8b5cf6', '#f59e0b'],
+                    roam: true
+                }]
+            };
+            chart.setOption(option, true);
+            chart.resize();
+        }
+
+        // ---- 对比图 ----
+        function updateCompareChart() {
+            var chart = getChart('compareChart');
+            if (!chart) return;
+            var sheets = Object.keys(allSheetData);
+            if (sheets.length === 0) return;
+            var allLatest = getLatestRow(allSheetData['全部基金'] || []);
+            if (!allLatest) return;
+            var top10 = INDUSTRIES.slice(0, 31).map(function(name, i) {
+                return { name: name, val: allLatest[i + 1] || 0 };
+            }).sort(function(a, b) { return b.val - a.val; }).slice(0, 10).map(function(d) { return d.name; });
+
+            var seriesData = {};
+            sheets.forEach(function(sheetName) {
+                var data = allSheetData[sheetName];
+                if (!data || data.length === 0) return;
+                var row = getLatestRow(data);
+                if (row) seriesData[sheetName] = row;
+            });
+            var legendData = Object.keys(seriesData);
+            var series = legendData.map(function(sheetName) {
+                var row = seriesData[sheetName];
+                var data = top10.map(function(industry) {
+                    var idx = INDUSTRIES.indexOf(industry);
+                    return +(row[idx + 1] * 100).toFixed(2);
+                });
+                return { name: sheetName, type: 'bar', data: data, barGap: '20%' };
+            });
+            var option = {
+                tooltip: { trigger: 'axis' },
+                legend: { data: legendData, textStyle: { color: '#c8d8e8' } },
+                grid: { left: '5%', right: '5%', bottom: '12%', top: '10%' },
+                xAxis: { type: 'category', data: top10, axisLabel: { rotate: 30, fontSize: 10, color: '#8899b0' } },
+                yAxis: { type: 'value', axisLabel: { formatter: '{value}%', color: '#8899b0' } },
+                series: series
+            };
+            chart.setOption(option, true);
+            chart.resize();
+        }
+
+        // ---- 热力图 ----
+        function updateHeatmapChart(data) {
+            var chart = getChart('heatmapChart');
+            if (!chart || !data || data.length === 0) return;
+            var latest = getLatestRow(data);
+            if (!latest) return;
+            var sorted = INDUSTRIES.slice(0, 31).map(function(name, i) {
+                return { name: name, val: latest[i + 1] || 0 };
+            }).sort(function(a, b) { return b.val - a.val; });
+            var top15 = sorted.slice(0, 15).map(function(d) { return d.name; });
+            var windowSize = Math.min(20, data.length);
+            var slice = data.slice(-windowSize);
+            var dates = slice.map(function(row) { return row[0]; });
+            var heatData = [];
+            top15.forEach(function(industry, j) {
+                var idx = INDUSTRIES.indexOf(industry);
+                slice.forEach(function(row, i) {
+                    heatData.push([i, j, +(row[idx + 1] * 100).toFixed(2)]);
+                });
+            });
+            var option = {
+                tooltip: {
+                    position: 'top',
+                    formatter: function(params) {
+                        var date = dates[params.value[0]];
+                        var industry = top15[params.value[1]];
+                        return date + '<br/>' + industry + ': ' + params.value[2] + '%';
+                    }
+                },
+                grid: { left: '10%', right: '5%', bottom: '15%', top: '5%' },
+                xAxis: { type: 'category', data: dates, axisLabel: { rotate: 30, fontSize: 9, color: '#8899b0' } },
+                yAxis: { type: 'category', data: top15, axisLabel: { fontSize: 10, color: '#8899b0' } },
+                visualMap: {
+                    min: 0,
+                    max: 20,
+                    calculable: true,
+                    orient: 'horizontal',
+                    left: 'center',
+                    bottom: 0,
+                    inRange: { color: ['#1a222f', '#2a3a50', '#4a7a9a', '#f0c27f', '#fc5c7d'] }
+                },
+                series: [{
+                    type: 'heatmap',
+                    data: heatData,
+                    label: { show: false },
+                    emphasis: { itemStyle: { shadowBlur: 10 } }
+                }]
+            };
+            chart.setOption(option, true);
+            chart.resize();
+        }
+
+        // ---- 表格 ----
+        function updateTable(data) {
+            var head = $('tableHead');
+            var body = $('tableBody');
+            if (!data || data.length === 0) return;
+            var show = data.slice(-10).reverse();
+            var headerHtml = '<tr><th>日期</th>';
+            INDUSTRIES.forEach(function(name) {
+                headerHtml += '<th>' + name + '</th>';
+            });
+            headerHtml += '<th>基金数</th></tr>';
+            head.innerHTML = headerHtml;
+
+            var bodyHtml = '';
+            show.forEach(function(row) {
+                bodyHtml += '<tr><td>' + row[0] + '</td>';
+                for (var i = 1; i <= 31; i++) {
+                    bodyHtml += '<td>' + (row[i] * 100).toFixed(2) + '%</td>';
                 }
-            },
-            grid: { left: '10%', right: '5%', bottom: '15%', top: '5%' },
-            xAxis: { type: 'category', data: dates, axisLabel: { rotate: 30, fontSize: 9, color: '#8899b0' } },
-            yAxis: { type: 'category', data: top15, axisLabel: { fontSize: 10, color: '#8899b0' } },
-            visualMap: {
-                min: 0,
-                max: 20,
-                calculable: true,
-                orient: 'horizontal',
-                left: 'center',
-                bottom: 0,
-                inRange: { color: ['#1a222f', '#2a3a50', '#4a7a9a', '#f0c27f', '#fc5c7d'] }
-            },
-            series: [{
-                type: 'heatmap',
-                data: heatData,
-                label: { show: false },
-                emphasis: { itemStyle: { shadowBlur: 10 } }
-            }]
-        };
-        chart.setOption(option, true);
-        chart.resize();
-    }
-
-    // ---- 表格 ----
-    function updateTable(data) {
-        const head = $('tableHead');
-        const body = $('tableBody');
-        if (!data || data.length === 0) return;
-        const show = data.slice(-10).reverse();
-        let headerHtml = '<tr><th>日期</th>';
-        INDUSTRIES.forEach(name => { headerHtml += `<th>${name}</th>`; });
-        headerHtml += '<th>基金数</th></tr>';
-        head.innerHTML = headerHtml;
-
-        let bodyHtml = '';
-        show.forEach(row => {
-            bodyHtml += `<tr><td>${row[0]}</td>`;
-            for (let i = 1; i <= 31; i++) {
-                bodyHtml += `<td>${(row[i]*100).toFixed(2)}%</td>`;
-            }
-            bodyHtml += `<td>${(row[32]*100).toFixed(2)}%</td>`;
-            bodyHtml += `<td>${(row[33]*100).toFixed(2)}%</td>`;
-            bodyHtml += `<td>${row[34]||''}</td>`;
-            bodyHtml += '</tr>';
-        });
-        body.innerHTML = bodyHtml;
-    }
-
-    // ---- ECharts 实例管理 ----
-    function getChart(id) {
-        const dom = document.getElementById(id);
-        if (!dom) return null;
-        if (!chartInstances[id]) {
-            chartInstances[id] = echarts.init(dom, 'dark');
-            window.addEventListener('resize', () => {
-                if (chartInstances[id]) chartInstances[id].resize();
+                bodyHtml += '<td>' + (row[32] * 100).toFixed(2) + '%</td>';
+                bodyHtml += '<td>' + (row[33] * 100).toFixed(2) + '%</td>';
+                bodyHtml += '<td>' + (row[34] || '') + '</td>';
+                bodyHtml += '</tr>';
             });
+            body.innerHTML = bodyHtml;
         }
-        return chartInstances[id];
-    }
 
-    // ---- 窗口变化 ----
-    windowSelect.addEventListener('change', function() {
-        if (currentData.length > 0) {
-            updateTrendChart(currentData);
-            updateHeatmapChart(currentData);
-        }
-    });
-
-    // ================================================================
-    //  主加载：读取 data.xlsx
-    // ================================================================
-    fetch('industry_avg_position.xlsx')
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status} — 文件不存在或无法读取`);
-            return res.arrayBuffer();
-        })
-        .then(buffer => {
-            const sheets = parseExcelData(buffer);
-            if (Object.keys(sheets).length === 0) {
-                throw new Error('未找到有效数据，请检查 Excel 格式');
+        // ---- ECharts 实例管理 ----
+        function getChart(id) {
+            var dom = document.getElementById(id);
+            if (!dom) return null;
+            if (!chartInstances[id]) {
+                chartInstances[id] = echarts.init(dom, 'dark');
+                // 窗口变化时自适应
+                window.addEventListener('resize', function() {
+                    if (chartInstances[id]) chartInstances[id].resize();
+                });
             }
-            allSheetData = sheets;
-            const sheetNames = Object.keys(sheets);
-            // 如果有“全部基金”则默认选中，否则选第一个
-            const defaultSheet = sheetNames.includes('全部基金') ? '全部基金' : sheetNames[0];
-            renderAll(defaultSheet);
-        })
-        .catch(err => {
-            $('loading').innerHTML = `
-                <div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>
-                <div style="color:#8899b0;margin-top:12px;">${err.message}</div>
-                <div style="color:#5a6a80;margin-top:8px;font-size:14px;">
-                    请确保 <strong>industry_avg_position.xlsx</strong> 与当前页面在同一目录，<br>
-                    且格式符合要求（日期 + 31个行业 + 中证全债 + 货币基金 + 基金数量）。
-                </div>
-            `;
-            console.error(err);
+            return chartInstances[id];
+        }
+
+        // ---- 窗口变化 ----
+        windowSelect.addEventListener('change', function() {
+            if (currentData.length > 0) {
+                updateTrendChart(currentData);
+                updateHeatmapChart(currentData);
+            }
         });
-</script>
+
+        // ================================================================
+        //  主加载：读取 data.xlsx
+        // ================================================================
+        fetch('data.xlsx')
+            .then(function(res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status + ' — 文件不存在或无法读取');
+                return res.arrayBuffer();
+            })
+            .then(function(buffer) {
+                var sheets = parseExcelData(buffer);
+                if (Object.keys(sheets).length === 0) {
+                    throw new Error('未找到有效数据，请检查 Excel 格式');
+                }
+                allSheetData = sheets;
+                var sheetNames = Object.keys(sheets);
+                var defaultSheet = sheetNames.indexOf('全部基金') !== -1 ? '全部基金' : sheetNames[0];
+                renderAll(defaultSheet);
+            })
+            .catch(function(err) {
+                $('loading').innerHTML =
+                    '<div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>' +
+                    '<div style="color:#8899b0;margin-top:12px;">' + err.message + '</div>' +
+                    '<div style="color:#5a6a80;margin-top:8px;font-size:14px;">' +
+                    '请确保 <strong>data.xlsx</strong> 与当前页面在同一目录，<br>' +
+                    '且格式符合要求（日期 + 31个行业 + 中证全债 + 货币基金 + 基金数量）。' +
+                    '</div>';
+                console.error(err);
+            });
+
+        // ================================================================
+        //  ✅ 页面完全加载后再次强制刷新所有图表（双重保险）
+        // ================================================================
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                Object.keys(chartInstances).forEach(function(key) {
+                    if (chartInstances[key]) {
+                        chartInstances[key].resize();
+                    }
+                });
+            }, 200);
+        });
+    </script>
 
 </body>
 </html>
