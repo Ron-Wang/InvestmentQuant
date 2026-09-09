@@ -6,8 +6,6 @@
     <title>沪深300 PE百分位 · 分布分析</title>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js">
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
-    </script>
     <style>
         /* ===== 深色主题（统一风格） ===== */
         * {
@@ -43,6 +41,11 @@
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin-bottom: 16px;
+        }
+        .loading .progress-text {
+            color: #7a8aa0;
+            font-size: 14px;
+            margin-top: 8px;
         }
         @keyframes spin {
             to {
@@ -267,7 +270,8 @@
         <!-- 加载提示 -->
         <div id="loading" class="loading">
             <div class="spinner"></div>
-            <div>正在加载数据 (pe_data.xlsx) ...</div>
+            <div>正在加载数据 ...</div>
+            <div class="progress-text" id="progressText">准备读取 CSV 文件</div>
         </div>
 
         <!-- 看板 -->
@@ -275,7 +279,7 @@
             <div class="header">
                 <div>
                     <h1>📈 沪深300 · PE百分位分布</h1>
-                    <div class="sub">自动加载同目录的 <strong>pe_data.xlsx</strong>（每个日期一个 Sheet）</div>
+                    <div class="sub">自动加载同目录下所有 <strong>hs300_pe_percentile_*.csv</strong> 文件</div>
                 </div>
                 <span class="badge" id="fileInfo">加载中...</span>
             </div>
@@ -314,47 +318,53 @@
 
     <script>
         // ================================================================
+        //  🔧 用户配置区：在此列出所有 CSV 文件名
+        //  如果同目录下有 files.json，将自动使用其中的列表（优先级更高）
+        // ================================================================
+        const CSV_FILES = [
+            'hs300_pe_percentile_2015-06-08.csv',
+            // 在此添加更多 CSV 文件，例如：
+            // 'hs300_pe_percentile_2015-06-09.csv',
+            // 'hs300_pe_percentile_2015-06-10.csv',
+        ];
+
+        // ================================================================
         //  数据存储与辅助函数
         // ================================================================
         const allData = {};
+        let loadedCount = 0;
+        let totalFiles = 0;
 
-        function parseExcelPE(buffer) {
-            const workbook = XLSX.read(buffer, { type: 'array' });
-            const sheets = {};
-            workbook.SheetNames.forEach(sheetName => {
-                const ws = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-                if (json.length < 2) return;
-                // 第一行是表头，寻找列索引
-                const header = json[0].map(cell => String(cell).trim());
-                const idxName = header.indexOf('name');
-                const idxPct = header.indexOf('percentile');
-                const idxPe = header.indexOf('pe_ttm');
-                const idxPositive = header.indexOf('is_positive');
-                if (idxPct === -1 || idxName === -1) return;
+        function extractDateFromFilename(filename) {
+            const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
+            return match ? match[1] : null;
+        }
 
-                const stocks = [];
-                for (let i = 1; i < json.length; i++) {
-                    const row = json[i];
-                    if (row.length <= Math.max(idxPct, idxName)) continue;
-                    const isPos = idxPositive !== -1 ? String(row[idxPositive]).trim() : 'True';
-                    if (isPos !== 'True') continue;
-                    const pct = parseFloat(row[idxPct]);
-                    if (isNaN(pct) || pct < 0 || pct > 100) continue;
-                    stocks.push({
-                        name: String(row[idxName] || 'Unknown'),
-                        percentile: pct,
-                        pe: idxPe !== -1 ? parseFloat(row[idxPe]) || 0 : 0
-                    });
-                }
-                if (stocks.length > 0) {
-                    sheets[sheetName] = {
-                        percentiles: stocks.map(s => s.percentile),
-                        stocks: stocks
-                    };
-                }
-            });
-            return sheets;
+        function parseCSV(text) {
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            if (lines.length === 0) return [];
+            const header = lines[0].replace(/^\uFEFF/, '').split(',');
+            const idxName = header.indexOf('name');
+            const idxPct = header.indexOf('percentile');
+            const idxPe = header.indexOf('pe_ttm');
+            const idxPositive = header.indexOf('is_positive');
+            if (idxPct === -1 || idxName === -1) return [];
+
+            const results = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if (cols.length <= Math.max(idxPct, idxName)) continue;
+                const isPos = idxPositive !== -1 ? cols[idxPositive].trim() : 'True';
+                if (isPos !== 'True') continue;
+                const pct = parseFloat(cols[idxPct]);
+                if (isNaN(pct) || pct < 0 || pct > 100) continue;
+                results.push({
+                    name: cols[idxName] || 'Unknown',
+                    percentile: pct,
+                    pe: idxPe !== -1 ? parseFloat(cols[idxPe]) || 0 : 0
+                });
+            }
+            return results;
         }
 
         function getStats(arr) {
@@ -650,7 +660,10 @@
             if (dates.length === 0) {
                 document.getElementById('loading').innerHTML =
                     '<div style="color:#fc6b6b;font-size:20px;">⚠️ 未找到有效数据</div>' +
-                    '<div style="color:#8899b0;margin-top:12px;">请确保 <strong>pe_data.xlsx</strong> 与当前页面在同一目录，且每个 Sheet 名称是日期。</div>';
+                    '<div style="color:#8899b0;margin-top:12px;">请确保目录下存在 <strong>hs300_pe_percentile_*.csv</strong> 文件。</div>' +
+                    '<div style="color:#5a6a80;margin-top:8px;font-size:14px;">' +
+                    '已在 <strong>files.json</strong> 或 <strong>CSV_FILES</strong> 中配置文件名，且每个文件包含 name, percentile, is_positive 列。' +
+                    '</div>';
                 return;
             }
 
@@ -720,30 +733,97 @@
         }
 
         // ================================================================
-        //  主加载：自动读取 pe_data.xlsx
+        //  主加载：读取 CSV 文件列表
         // ================================================================
-        fetch('pe_data.xlsx')
-            .then(res => {
-                if (!res.ok) throw new Error(`HTTP ${res.status} — 文件不存在`);
-                return res.arrayBuffer();
-            })
-            .then(buffer => {
-                const sheets = parseExcelPE(buffer);
-                if (Object.keys(sheets).length === 0) {
-                    throw new Error('Excel 中未找到有效数据（需要包含 name 和 percentile 列）');
-                }
-                Object.assign(allData, sheets);
-                updateDashboard();
-            })
-            .catch(err => {
+        function loadCSVFiles(fileList) {
+            totalFiles = fileList.length;
+            if (totalFiles === 0) {
                 document.getElementById('loading').innerHTML =
-                    '<div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>' +
-                    '<div style="color:#8899b0;margin-top:12px;">' + err.message + '</div>' +
-                    '<div style="color:#5a6a80;margin-top:8px;font-size:14px;">' +
-                    '请将 <strong>pe_data.xlsx</strong> 与当前页面放在同一目录，<br>' +
-                    '每个 Sheet 名称为日期（如 2025-03-31），包含列：name, percentile, pe_ttm（可选）, is_positive（可选）。' +
-                    '</div>';
-                console.error(err);
+                    '<div style="color:#f0c27f;font-size:20px;">📂 未配置 CSV 文件</div>' +
+                    '<div style="color:#8899b0;margin-top:12px;">请在 <strong>files.json</strong> 或 <strong>CSV_FILES</strong> 数组中添加文件名。</div>';
+                return;
+            }
+
+            let loaded = 0;
+            const progressText = document.getElementById('progressText');
+
+            fileList.forEach(filename => {
+                const date = extractDateFromFilename(filename);
+                if (!date) {
+                    loaded++;
+                    updateProgress(loaded, totalFiles);
+                    return;
+                }
+
+                fetch(filename)
+                    .then(res => {
+                        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                        return res.text();
+                    })
+                    .then(text => {
+                        const parsed = parseCSV(text);
+                        if (parsed.length > 0) {
+                            allData[date] = {
+                                percentiles: parsed.map(d => d.percentile),
+                                stocks: parsed
+                            };
+                        } else {
+                            console.warn('CSV 无有效数据:', filename);
+                        }
+                        loaded++;
+                        updateProgress(loaded, totalFiles);
+                        if (loaded === totalFiles) {
+                            updateDashboard();
+                        }
+                    })
+                    .catch(err => {
+                        console.error('加载失败:', filename, err);
+                        loaded++;
+                        updateProgress(loaded, totalFiles);
+                        if (loaded === totalFiles) {
+                            updateDashboard();
+                        }
+                    });
+            });
+        }
+
+        function updateProgress(current, total) {
+            const pct = Math.round((current / total) * 100);
+            const el = document.getElementById('progressText');
+            if (el) {
+                el.textContent = `加载中 ${current}/${total} (${pct}%)`;
+            }
+        }
+
+        // ---- 启动加载 ----
+        // 优先尝试加载 files.json，如果不存在则使用硬编码 CSV_FILES
+        fetch('files.json')
+            .then(res => {
+                if (res.ok) return res.json();
+                throw new Error('files.json 不存在，使用硬编码列表');
+            })
+            .then(json => {
+                if (json && Array.isArray(json.files)) {
+                    document.getElementById('progressText').textContent = `从 files.json 读取到 ${json.files.length} 个文件`;
+                    loadCSVFiles(json.files);
+                } else {
+                    throw new Error('files.json 格式无效，使用硬编码列表');
+                }
+            })
+            .catch(() => {
+                // 回退到硬编码列表
+                if (CSV_FILES.length > 0) {
+                    document.getElementById('progressText').textContent =
+                        `使用硬编码列表，共 ${CSV_FILES.length} 个文件（如需动态列表，请创建 files.json）`;
+                    loadCSVFiles(CSV_FILES);
+                } else {
+                    document.getElementById('loading').innerHTML =
+                        '<div style="color:#f0c27f;font-size:20px;">📂 请配置 CSV 文件</div>' +
+                        '<div style="color:#8899b0;margin-top:12px;">在 HTML 中修改 <strong>CSV_FILES</strong> 数组，或创建 <strong>files.json</strong> 文件。</div>' +
+                        '<div style="color:#5a6a80;margin-top:8px;font-size:14px;">' +
+                        '示例 files.json: { "files": ["hs300_pe_percentile_2015-06-08.csv"] }' +
+                        '</div>';
+                }
             });
     </script>
 </body>
