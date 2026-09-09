@@ -334,7 +334,7 @@
             <div class="header-left">
                 <h1><i class="fas fa-chart-pie" style="color:#f0c27f;margin-right:10px;"></i>主动权益 · 行业仓位测算</h1>
                 <div class="subtitle">
-                    <span>📂 数据文件：data.xlsx</span>
+                    <span>📂 数据文件：industry_avg_position.xlsx</span>
                     <span id="dateRange"></span>
                 </div>
             </div>
@@ -715,7 +715,7 @@
     // ================================================================
     //  主加载：读取 data.xlsx
     // ================================================================
-    fetch('data.xlsx')
+    fetch('industry_avg_position.xlsx')
         .then(res => {
             if (!res.ok) throw new Error(`HTTP ${res.status} — 文件不存在或无法读取`);
             return res.arrayBuffer();
@@ -736,7 +736,7 @@
                 <div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>
                 <div style="color:#8899b0;margin-top:12px;">${err.message}</div>
                 <div style="color:#5a6a80;margin-top:8px;font-size:14px;">
-                    请确保 <strong>data.xlsx</strong> 与当前页面在同一目录，<br>
+                    请确保 <strong>industry_avg_position.xlsx</strong> 与当前页面在同一目录，<br>
                     且格式符合要求（日期 + 31个行业 + 中证全债 + 货币基金 + 基金数量）。
                 </div>
             `;
