@@ -22,7 +22,7 @@
             padding: 24px;
         }
         .container {
-            max-width: 1100px;
+            max-width: 1200px;
             width: 100%;
             padding: 40px 32px;
             background: #141b26;
@@ -30,9 +30,11 @@
             border: 1px solid #26303f;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
         }
+
+        /* ---------- 头部 ---------- */
         .header {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 36px;
         }
         .header h1 {
             font-size: 38px;
@@ -49,29 +51,32 @@
             border-bottom: 1px solid #1f2a3a;
             padding-bottom: 18px;
         }
+
+        /* ---------- 区块标题 ---------- */
         .section-title {
             font-size: 20px;
             font-weight: 600;
             color: #c8d8e8;
-            margin: 32px 0 18px 0;
+            margin: 36px 0 20px 0;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        .section-title i {
-            color: #f0c27f;
-        }
+        .section-title:first-of-type { margin-top: 0; }
+        .section-title i { color: #f0c27f; }
         .section-title .badge {
             font-size: 12px;
             background: #1f2a3a;
-            padding: 2px 14px;
+            padding: 3px 14px;
             border-radius: 20px;
             font-weight: 400;
             color: #7a8aa0;
         }
+
+        /* ---------- 卡片网格 ---------- */
         .card-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
         }
         .card {
@@ -87,26 +92,43 @@
             align-items: flex-start;
             text-align: left;
             position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(240,194,127,0.35), transparent);
+            opacity: 0;
+            transition: opacity 0.25s;
         }
         .card:hover {
             transform: translateY(-4px);
             border-color: #f0c27f;
-            box-shadow: 0 8px 30px rgba(240, 194, 127, 0.08);
+            box-shadow: 0 10px 32px rgba(240, 194, 127, 0.09);
         }
+        .card:hover::before { opacity: 1; }
+
         .card .icon {
             font-size: 32px;
             margin-bottom: 10px;
+            line-height: 1;
         }
         .card .name {
             font-size: 18px;
             font-weight: 600;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            color: #e6edf5;
         }
         .card .desc {
             font-size: 13px;
             color: #8899b0;
-            line-height: 1.5;
-            margin-bottom: 12px;
+            line-height: 1.6;
+            margin-bottom: 14px;
+            flex-grow: 1;
         }
         .card .tag {
             display: inline-block;
@@ -126,18 +148,35 @@
             color: #4cd9a0;
         }
 
+        /* 副标签（卡片底部多个小标签） */
+        .card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: auto;
+        }
+        .card-tags .tag {
+            margin-top: 0;
+        }
+
+        /* ---------- 底部 ---------- */
         .footer {
-            margin-top: 40px;
+            margin-top: 44px;
             text-align: center;
             font-size: 12px;
             color: #4a5a70;
             border-top: 1px solid #1a222f;
             padding-top: 20px;
+            line-height: 1.8;
         }
-        .footer i {
-            margin-right: 6px;
+        .footer i { margin-right: 6px; }
+        .footer .dot-sep {
+            display: inline-block;
+            margin: 0 8px;
+            color: #2a3a50;
         }
 
+        /* ---------- 响应式 ---------- */
         @media (max-width: 700px) {
             .card-grid {
                 grid-template-columns: 1fr;
@@ -148,60 +187,144 @@
             .header h1 {
                 font-size: 28px;
             }
+            .section-title {
+                font-size: 18px;
+            }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
+
+    <!-- 顶部标题 -->
     <div class="header">
         <h1>📊 InvestmentQuant</h1>
         <p>量化策略 · 基金研究 · 数据驱动</p>
     </div>
 
-    <!-- 策略模块 -->
+    <!-- ==================== 策略模块 ==================== -->
     <div class="section-title">
-        <i class="fas fa-chess-queen"></i> 策略 <span class="badge">回测 · 配置</span>
+        <i class="fas fa-chess-queen"></i> 策略
+        <span class="badge">回测 · 配置</span>
     </div>
+
     <div class="card-grid">
+
+        <!-- 银行 · 科创芯片均衡 -->
         <a href="./strategy-bank-chip/" class="card">
             <div class="icon">🏦</div>
             <div class="name">银行 · 科创芯片均衡</div>
-            <div class="desc">6:4 比例 · 季度重平衡<br />回测区间 2022-2026</div>
+            <div class="desc">
+                6:4 比例 · 季度重平衡<br />
+                回测区间 2022 - 2026
+            </div>
+            <div class="card-tags">
+                <span class="tag strategy">策略</span>
+                <span class="tag">2 资产</span>
+                <span class="tag">固定权重</span>
+            </div>
+        </a>
+
+        <!-- 跨境多资产风险平价 -->
+        <a href="./strategy-cross-border-rp/" class="card">
+            <div class="icon">⚖️</div>
+            <div class="name">跨境多资产风险平价</div>
+            <div class="desc">
+                5 只全球 ETF · 风险平价权重<br />
+                252 日协方差矩阵 · 季度再平衡
+            </div>
+            <div class="card-tags">
+                <span class="tag strategy">策略</span>
+                <span class="tag">风险平价</span>
+                <span class="tag">多资产</span>
+            </div>
+        </a>
+
+        <!-- 跨境多资产等权 -->
+        <a href="./strategy-cross-border-equal/" class="card">
+            <div class="icon">🌍</div>
+            <div class="name">跨境多资产等权</div>
+            <div class="desc">
+                5 只全球 ETF · 等权重 1/N<br />
+                季度再平衡 · 先卖后买整手交易
+            </div>
+            <div class="card-tags">
+                <span class="tag strategy">策略</span>
+                <span class="tag">等权重</span>
+                <span class="tag">多资产</span>
+            </div>
+        </a>
+
+        <!-- 预留：未来策略 -->
+        <!--
+        <a href="./strategy-xxx/" class="card">
+            <div class="icon">🧠</div>
+            <div class="name">未来策略</div>
+            <div class="desc">策略描述占位</div>
             <span class="tag strategy">策略</span>
         </a>
-        <!-- 未来更多策略可在此添加 -->
+        -->
+
     </div>
 
-    <!-- 研究模块 -->
+    <!-- ==================== 研究模块 ==================== -->
     <div class="section-title">
-        <i class="fas fa-microscope"></i> 研究 <span class="badge">分析 · 工具</span>
+        <i class="fas fa-microscope"></i> 研究
+        <span class="badge">分析 · 工具</span>
     </div>
+
     <div class="card-grid">
+
+        <!-- 主动权益行业仓位测算 -->
         <a href="./analysis-fund-sector/" class="card">
             <div class="icon">📈</div>
             <div class="name">主动权益行业仓位测算</div>
-            <div class="desc">31个申万行业 + 债券/货基<br />自动加载 Excel，生成可视化看板</div>
-            <span class="tag research">研究工具</span>
+            <div class="desc">
+                31 个申万行业 + 债券 / 货基<br />
+                自动加载 Excel，生成可视化看板
+            </div>
+            <div class="card-tags">
+                <span class="tag research">研究工具</span>
+                <span class="tag">行业仓位</span>
+                <span class="tag">Excel</span>
+            </div>
         </a>
+
+        <!-- 沪深300 PE百分位分布 -->
         <a href="./analysis-hs300-pe/" class="card">
             <div class="icon">📊</div>
-            <div class="name">沪深300 PE百分位分布</div>
-            <div class="desc">PE百分位分布密度、累积曲线<br />自动加载 Excel，生成趋势与深度分析</div>
+            <div class="name">沪深300 PE 百分位分布</div>
+            <div class="desc">
+                PE 百分位分布密度、累积曲线<br />
+                自动加载 Excel，生成趋势与深度分析
+            </div>
+            <div class="card-tags">
+                <span class="tag research">研究工具</span>
+                <span class="tag">估值</span>
+                <span class="tag">PE</span>
+            </div>
+        </a>
+
+        <!-- 预留：未来研究工具 -->
+        <!--
+        <a href="./analysis-xxx/" class="card">
+            <div class="icon">🔬</div>
+            <div class="name">未来研究工具</div>
+            <div class="desc">工具描述占位</div>
             <span class="tag research">研究工具</span>
         </a>
-        <a href="./analysis-bank-value/" class="card">
-            <div class="icon">🏛️</div>
-            <div class="name">中证银行指数投资价值</div>
-            <div class="desc">股息率 vs 10年国债收益率<br />股债利差历史分位 · 估值信号看板</div>
-            <span class="tag research">研究工具</span>
-        </a>
-        <!-- 未来更多研究工具可在此添加 -->
+        -->
+
     </div>
 
+    <!-- 底部 -->
     <div class="footer">
-        <i class="fas fa-code"></i> 托管于 GitHub Pages · 持续更新
+        <i class="fas fa-code"></i> 托管于 GitHub Pages
+        <span class="dot-sep">·</span>
+        持续更新中
     </div>
+
 </div>
 
 </body>
