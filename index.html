@@ -169,53 +169,6 @@
             user-select: none;
         }
 
-        /* 点赞按钮 */
-        .like-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: transparent;
-            border: 1px solid #2a3a50;
-            color: #8899b0;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: inherit;
-            user-select: none;
-        }
-        .like-btn i {
-            margin: 0;
-            font-size: 13px;
-            transition: transform 0.2s ease;
-        }
-        .like-btn:hover {
-            border-color: #fc5c7d;
-            color: #fc5c7d;
-        }
-        .like-btn:hover i {
-            color: #fc5c7d;
-            transform: scale(1.15);
-        }
-        .like-btn.liked {
-            background: rgba(252, 92, 125, 0.1);
-            border-color: #fc5c7d;
-            color: #fc5c7d;
-            cursor: default;
-        }
-        .like-btn.liked i {
-            color: #fc5c7d;
-        }
-        .like-btn.liked:hover i {
-            transform: none;
-        }
-        .like-btn .like-count {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 600;
-            font-size: 12px;
-        }
-
         @media (max-width: 700px) {
             .card-grid {
                 grid-template-columns: 1fr;
@@ -254,7 +207,6 @@
             <div class="desc">5 只全球 ETF · 风险平价权重<br />252 日协方差矩阵 · 季度再平衡</div>
             <span class="tag strategy">策略</span>
         </a>
-        <!-- 未来更多策略可在此添加 -->
     </div>
 
     <!-- 研究模块 -->
@@ -280,7 +232,6 @@
             <div class="desc">股息率 vs 10年国债收益率<br />股债利差历史分位 · 估值信号看板</div>
             <span class="tag research">研究工具</span>
         </a>
-        <!-- 未来更多研究工具可在此添加 -->
     </div>
 
     <div class="footer">
@@ -298,78 +249,12 @@
                 <span class="num" id="busuanzi_value_site_uv">—</span>
                 <span>人</span>
             </span>
-            <span class="divider">·</span>
-            <button id="likeBtn" class="like-btn" type="button" aria-label="点赞">
-                <i class="fas fa-heart"></i>
-                <span>点赞</span>
-                <span class="like-count" id="likeCount">—</span>
-            </button>
         </div>
         <div>
             <i class="fas fa-code"></i> 托管于 GitHub Pages · 持续更新
         </div>
     </div>
 </div>
-
-<script>
-    /* ============================================================
-     *  点赞按钮
-     *  使用 counterapi.dev 免注册计数，localStorage 防止重复点赞
-     * ============================================================ */
-    (function () {
-        var NAMESPACE = 'ron-wang-investmentquant';
-        var KEY = 'homepage-likes';
-        var STORAGE_KEY = 'iq_homepage_liked';
-        var API_BASE = 'https://api.counterapi.dev/v1';
-
-        var btn = document.getElementById('likeBtn');
-        var countEl = document.getElementById('likeCount');
-        var alreadyLiked = !!localStorage.getItem(STORAGE_KEY);
-
-        if (alreadyLiked && btn) {
-            btn.classList.add('liked');
-            btn.setAttribute('title', '你已点过赞，感谢支持！');
-        }
-
-        // 读取当前计数
-        function loadCount() {
-            fetch(API_BASE + '/' + NAMESPACE + '/' + KEY + '/')
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    if (d && typeof d.count === 'number') {
-                        countEl.textContent = d.count;
-                    }
-                })
-                .catch(function () {
-                    countEl.textContent = '—';
-                });
-        }
-        loadCount();
-
-        // 点击点赞
-        if (btn) {
-            btn.addEventListener('click', function () {
-                if (localStorage.getItem(STORAGE_KEY)) return;
-
-                fetch(API_BASE + '/' + NAMESPACE + '/' + KEY + '/up')
-                    .then(function (r) { return r.json(); })
-                    .then(function (d) {
-                        if (d && typeof d.count === 'number') {
-                            countEl.textContent = d.count;
-                            localStorage.setItem(STORAGE_KEY, '1');
-                            btn.classList.add('liked');
-                            btn.setAttribute('title', '你已点过赞，感谢支持！');
-                        }
-                    })
-                    .catch(function () {
-                        // 计数失败也允许本地标记，避免重复点击
-                        localStorage.setItem(STORAGE_KEY, '1');
-                        btn.classList.add('liked');
-                    });
-            });
-        }
-    })();
-</script>
 
 </body>
 </html>
