@@ -295,8 +295,9 @@
             { key: 'BOND', name: 'BOND 十年国债', color: '#4cd9a0' },
             { key: 'GOLD', name: 'GOLD 黄金',    color: '#f5a623' },
         ];
-        const TARGET_W = 25;  // 每类资产目标权重 %
+        const TARGET_W = 25;                 // 每类资产目标权重 %
         const STRATEGY_COLOR = '#f0c27f';
+        const EPS = 1e-6;                    // 浮点容差
 
         // ============================================================
         // 工具函数：解析 CSV（去除 BOM）
@@ -319,33 +320,6 @@
                 data.push(row);
             }
             return data;
-        }
-
-        // 聚合年度收益/回撤（从净值数据计算）
-        function aggregateAnnual(navData, strategyKey) {
-            const years = {};
-            navData.forEach(d => {
-                const year = d.date.substring(0, 4);
-                if (!years[year]) years[year] = {
-                    start: d[strategyKey], end: d[strategyKey],
-                    max: d[strategyKey], min: d[strategyKey]
-                };
-                const val = d[strategyKey];
-                if (val < years[year].min) years[year].min = val;
-                if (val > years[year].max) years[year].max = val;
-                years[year].end = val;
-            });
-            const keys = Object.keys(years).sort();
-            const result = {};
-            keys.forEach(y => {
-                const start = years[y].start;
-                const ret = (years[y].end - start) / start;
-                const drawdown = (years[y].max > 0)
-                    ? (years[y].min - years[y].max) / years[y].max
-                    : 0;
-                result[y] = { return: ret, drawdown: drawdown };
-            });
-            return result;
         }
 
         // ============================================================
@@ -482,10 +456,21 @@
                 }
             });
 
-            // ---- 年度收益率 ----
-            const annualRet = aggregateAnnual(nav, 'FAPP');
-            const years = Object.keys(annualRet).sort();
-            const retValues = years.map(y => annualRet[y].return * 100);
+            // ============================================================
+            // 年度收益率 & 最大回撤：直接用 CSV 现成数据（不再前端重算）
+            // ============================================================
+            const annualMap = {};
+            annual.forEach(row => {
+                annualMap[row['年份']] = {
+                    return:   row['总收益率'],
+                    drawdown: row['最大回撤']
+                };
+            });
+            const years     = Object.keys(annualMap).sort();
+            const retValues = years.map(y => annualMap[y].return * 100);
+            const ddValues  = years.map(y => annualMap[y].drawdown * 100);
+
+            // ---- 年度收益率柱状图 ----
             const barCtx = document.getElementById('annualBarChart').getContext('2d');
             if (window._barChart) window._barChart.destroy();
             window._barChart = new Chart(barCtx, {
@@ -512,8 +497,7 @@
                 }
             });
 
-            // ---- 年度最大回撤 ----
-            const ddValues = years.map(y => annualRet[y].drawdown * 100);
+            // ---- 年度最大回撤柱状图 ----
             const ddCtx = document.getElementById('annualDrawdownChart').getContext('2d');
             if (window._ddChart) window._ddChart.destroy();
             window._ddChart = new Chart(ddCtx, {
@@ -539,7 +523,7 @@
                 }
             });
 
-            // ---- 年度表格 ----
+            // ---- 年度表格（同样直读 CSV） ----
             const tableWrap = document.getElementById('annualTableWrap');
             let tableHtml = `<table>
                 <thead><tr>
@@ -547,7 +531,7 @@
                     <th>夏普比率</th><th>最大回撤</th><th>Calmar</th><th>交易日</th>
                 </tr></thead><tbody>`;
             annual.forEach(row => {
-                const yr      = row['年份'];
+                const yr       = row['年份'];
                 const totalRet = row['总收益率'];
                 const annRet   = row['年化收益率'];
                 const annVol   = row['年化波动率'];
@@ -575,7 +559,13 @@
             const holdingDates = holding.map(d => d.date);
 
             // 各资产仓位百分比
+            // 若 CSV 已提供 DIV_pct 等字段，则直接读；否则按 value/(sum+cash) 计算
+            const hasPctColumn = holding.length > 0 && holding[0]['DIV_pct'] !== undefined;
+
             function pctSeries(key) {
+                if (hasPctColumn) {
+                    return holding.map(d => (d[`${key}_pct`] || 0) * 100);
+                }
                 return holding.map(d => {
                     const total = ASSETS.reduce((s, a) => s + (d[`${a.key}_value`] || 0), 0)
                                 + (d.cash || 0);
@@ -585,14 +575,28 @@
             const pctData = {};
             ASSETS.forEach(a => { pctData[a.key] = pctSeries(a.key); });
 
-            // 调仓日判断：任一资产 shares 变化
+            // 调仓日判断：优先读 rebalance_flag，否则按 shares 变化推断（加浮点容差）
             const rebalanceDates = [];
-            for (let i = 1; i < holding.length; i++) {
-                const prev = holding[i - 1];
-                const curr = holding[i];
-                const changed = ASSETS.some(a =>
-                    curr[`${a.key}_shares`] !== prev[`${a.key}_shares`]);
-                if (changed) rebalanceDates.push(curr.date);
+            const hasRebFlag = holding.length > 0 &&
+                (holding[0]['rebalance_flag'] !== undefined || holding[0]['is_rebalance'] !== undefined);
+            if (hasRebFlag) {
+                holding.forEach(d => {
+                    const flag = d['rebalance_flag'] ?? d['is_rebalance'];
+                    if (flag === 1 || flag === '1' || flag === true) {
+                        rebalanceDates.push(d.date);
+                    }
+                });
+            } else {
+                for (let i = 1; i < holding.length; i++) {
+                    const prev = holding[i - 1];
+                    const curr = holding[i];
+                    const changed = ASSETS.some(a => {
+                        const pv = prev[`${a.key}_shares`] || 0;
+                        const cv = curr[`${a.key}_shares`] || 0;
+                        return Math.abs(cv - pv) > EPS;
+                    });
+                    if (changed) rebalanceDates.push(curr.date);
+                }
             }
 
             // 自定义插件：再平衡竖线
@@ -630,7 +634,7 @@
                 tension: 0.15,
                 fill: false,
             }));
-            // 4 条目标线（同色，虚线）
+            // 4 条目标线（同色虚线）
             ASSETS.forEach(a => {
                 holdDatasets.push({
                     label: `${a.key} 目标 ${TARGET_W}%`,
