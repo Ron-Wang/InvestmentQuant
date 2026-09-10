@@ -3,206 +3,445 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MABS · 全球多资产等权策略 · 季度再平衡</title>
+<title>MARP · 跨境多资产风险平价 · 季度再平衡</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    html, body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Roboto, sans-serif;
         background: #0b0e17;
         color: #e6edf5;
-        padding: 24px;
         min-height: 100vh;
+        padding: 24px;
+        -webkit-font-smoothing: antialiased;
     }
-    .container { max-width: 1440px; margin: 0 auto; }
+    .container { max-width: 1480px; margin: 0 auto; }
 
-    .loading { text-align: center; padding: 80px 20px; color: #5a6a80; font-size: 18px; }
+    /* ---------- 加载状态 ---------- */
+    .loading {
+        text-align: center;
+        padding: 100px 20px;
+        color: #5a6a80;
+        font-size: 18px;
+    }
     .loading .spinner {
-        display: inline-block; width: 40px; height: 40px;
-        border: 4px solid #1f2a3a; border-top-color: #f0c27f;
-        border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px;
+        display: inline-block;
+        width: 44px; height: 44px;
+        border: 4px solid #1f2a3a;
+        border-top-color: #f0c27f;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 18px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ---------- 顶栏 ---------- */
     .header {
-        display: flex; justify-content: space-between; align-items: flex-start;
-        flex-wrap: wrap; margin-bottom: 28px; padding: 20px 24px;
-        background: linear-gradient(145deg, #141b26, #0f1620);
-        border-radius: 20px; border: 1px solid #26303f;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 28px;
+        padding: 24px 28px;
+        background: linear-gradient(145deg, #141b26 0%, #0f1620 100%);
+        border-radius: 20px;
+        border: 1px solid #26303f;
+        position: relative;
+        overflow: hidden;
+    }
+    .header::before {
+        content: '';
+        position: absolute;
+        top: -50%; right: -10%;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(168,127,217,0.08) 0%, transparent 70%);
+        pointer-events: none;
     }
     .header-left h1 {
-        font-size: 24px; font-weight: 700;
-        background: linear-gradient(135deg, #f0c27f, #fc5c7d);
-        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        font-size: 26px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #a87fd9 0%, #f0c27f 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         letter-spacing: -0.5px;
+        margin-bottom: 8px;
     }
-    .header-left .subtitle { font-size: 13px; color: #8899b0; margin-top: 6px; }
-    .header-left .subtitle span {
-        display: inline-block; background: #1f2a3a; padding: 2px 12px;
-        border-radius: 12px; margin-right: 6px; margin-bottom: 4px;
+    .header-left .subtitle {
+        font-size: 13px;
+        color: #8899b0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
     }
-    .header-right { text-align: right; font-size: 13px; color: #8899b0; }
-    .header-right .highlight { color: #f0c27f; }
+    .header-left .subtitle .tag {
+        display: inline-block;
+        background: #1f2a3a;
+        padding: 3px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        color: #a8b8d0;
+    }
+    .header-left .subtitle .tag.accent {
+        background: rgba(168,127,217,0.14);
+        color: #c8a5f0;
+        border: 1px solid rgba(168,127,217,0.3);
+    }
+    .header-right {
+        text-align: right;
+        font-size: 13px;
+        color: #8899b0;
+        line-height: 1.7;
+    }
+    .header-right .highlight { color: #c8a5f0; font-weight: 600; }
+    .header-right .muted { font-size: 11px; color: #5a6a80; margin-top: 2px; }
 
+    /* ---------- KPI 卡片 ---------- */
     .kpi-grid {
-        display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-        gap: 14px; margin-bottom: 28px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
     }
     .kpi-card {
-        background: #141b26; border-radius: 14px; padding: 14px 16px;
-        border: 1px solid #1f2a3a; text-align: center;
+        background: linear-gradient(145deg, #141b26, #101722);
+        border-radius: 14px;
+        padding: 16px 18px;
+        border: 1px solid #1f2a3a;
+        text-align: center;
+        transition: transform 0.2s, border-color 0.2s;
+        position: relative;
+        overflow: hidden;
     }
-    .kpi-label { font-size: 11px; text-transform: uppercase; color: #7a8aa0; margin-bottom: 4px; }
-    .kpi-value { font-size: 22px; font-weight: 700; }
+    .kpi-card::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, currentColor, transparent);
+        opacity: 0.3;
+    }
+    .kpi-card:hover { transform: translateY(-2px); border-color: #2a3a50; }
+    .kpi-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #7a8aa0;
+        margin-bottom: 8px;
+    }
+    .kpi-value {
+        font-size: 24px;
+        font-weight: 700;
+        font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+        letter-spacing: -0.5px;
+    }
     .kpi-value.positive { color: #4cd9a0; }
     .kpi-value.negative { color: #fc6b6b; }
-    .kpi-value.neutral  { color: #f0c27f; }
+    .kpi-value.neutral  { color: #c8a5f0; }
+    .kpi-sub {
+        font-size: 11px;
+        color: #5a6a80;
+        margin-top: 6px;
+    }
 
+    /* ---------- 图表容器 ---------- */
     .chart-grid {
-        display: grid; grid-template-columns: 1fr 1fr;
-        gap: 20px; margin-bottom: 28px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 24px;
     }
     .chart-box {
-        background: #141b26; border-radius: 16px; padding: 18px 18px 10px;
+        background: #141b26;
+        border-radius: 16px;
+        padding: 20px 20px 12px;
         border: 1px solid #1f2a3a;
+        transition: border-color 0.2s;
     }
+    .chart-box:hover { border-color: #2a3a50; }
     .chart-box.full { grid-column: 1 / -1; }
     .chart-box .chart-title {
-        font-size: 15px; font-weight: 600; color: #c8d8e8;
-        margin-bottom: 10px; display: flex; align-items: center; gap: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #c8d8e8;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .chart-box .chart-title .label-wrap {
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
     .chart-box .chart-title .badge {
-        font-size: 10px; background: #1f2a3a; padding: 2px 12px;
-        border-radius: 12px; color: #8899b0; font-weight: 400;
+        font-size: 10px;
+        background: #1f2a3a;
+        padding: 3px 12px;
+        border-radius: 12px;
+        color: #8899b0;
+        font-weight: 400;
+        letter-spacing: 0.3px;
     }
-    .chart-wrapper { position: relative; height: 260px; }
-    .chart-wrapper.tall { height: 340px; }
+    .chart-wrapper { position: relative; height: 280px; }
+    .chart-wrapper.tall { height: 360px; }
 
-    .table-wrap { overflow-x: auto; margin-top: 6px; }
-    .table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    /* ---------- 表格 ---------- */
+    .table-wrap {
+        overflow-x: auto;
+        margin-top: 6px;
+        border-radius: 10px;
+    }
+    .table-wrap table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        white-space: nowrap;
+    }
     .table-wrap th {
-        text-align: left; padding: 8px 10px; color: #7a8aa0;
-        font-weight: 500; font-size: 11px; text-transform: uppercase;
+        text-align: left;
+        padding: 10px 12px;
+        color: #7a8aa0;
+        font-weight: 500;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
         border-bottom: 1px solid #1f2a3a;
+        background: #101722;
+        position: sticky;
+        top: 0;
     }
     .table-wrap td {
-        padding: 7px 10px; border-bottom: 1px solid #1a222f; color: #d0dcec;
+        padding: 9px 12px;
+        border-bottom: 1px solid #1a222f;
+        color: #d0dcec;
     }
-    .table-wrap .num { font-family: 'JetBrains Mono', monospace; text-align: right; }
+    .table-wrap tbody tr:hover td { background: #182130; }
+    .table-wrap .num {
+        font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+        text-align: right;
+        letter-spacing: -0.3px;
+    }
     .table-wrap .pos { color: #4cd9a0; }
     .table-wrap .neg { color: #fc6b6b; }
+    .table-wrap .year-cell { color: #c8a5f0; font-weight: 600; }
 
+    /* ---------- 图例 ---------- */
     .legend-inline {
-        display: flex; gap: 18px; flex-wrap: wrap;
-        margin-top: 8px; font-size: 12px; color: #8899b0;
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+        font-size: 12px;
+        color: #8899b0;
+        padding: 0 4px;
     }
     .legend-inline .dot {
-        display: inline-block; width: 10px; height: 10px;
-        border-radius: 3px; margin-right: 6px;
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: middle;
     }
     .text-muted { color: #5a6a80; font-size: 12px; }
     .flex-between {
-        display: flex; justify-content: space-between;
-        align-items: center; flex-wrap: wrap;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
     }
     .hidden { display: none !important; }
 
+    /* ---------- 底部脚注 ---------- */
+    .footer {
+        text-align: center;
+        padding: 24px 0 8px;
+        color: #5a6a80;
+        font-size: 12px;
+        line-height: 1.8;
+    }
+
+    /* ---------- 响应式 ---------- */
+    @media (max-width: 1024px) {
+        .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
     @media (max-width: 900px) {
         .chart-grid { grid-template-columns: 1fr; }
-        .header { flex-direction: column; gap: 10px; }
+        .header { flex-direction: column; }
         .header-right { text-align: left; width: 100%; }
-        .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+        .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+        .chart-wrapper.tall { height: 300px; }
     }
     @media (max-width: 600px) {
-        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
         body { padding: 12px; }
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        .kpi-value { font-size: 20px; }
+        .header { padding: 18px 18px; }
+        .header-left h1 { font-size: 20px; }
+        .chart-wrapper { height: 220px; }
+        .chart-wrapper.tall { height: 260px; }
+        .chart-box { padding: 14px 14px 8px; }
     }
 </style>
 </head>
 <body>
 
 <div class="container">
+
+    <!-- ========== 加载提示 ========== -->
     <div id="loading" class="loading">
         <div class="spinner"></div>
-        <div>正在加载策略数据 ...</div>
+        <div>正在加载 MARP 策略数据 ...</div>
     </div>
 
+    <!-- ========== 主看板 ========== -->
     <div id="dashboard" class="hidden">
+
+        <!-- 顶栏 -->
         <header class="header">
             <div class="header-left">
-                <h1>🌍 MABS 全球多资产等权策略</h1>
+                <h1>⚖️ MARP · 跨境多资产风险平价</h1>
                 <div class="subtitle">
-                    <span>5 只 ETF 等权</span>
-                    <span>📅 季度再平衡</span>
-                    <span id="dateRange"></span>
+                    <span class="tag accent">6 只全球 ETF</span>
+                    <span class="tag">🧮 风险平价权重</span>
+                    <span class="tag">📅 季度再平衡</span>
+                    <span class="tag" id="dateRange">--</span>
                 </div>
             </div>
             <div class="header-right">
-                <div>基准：<span class="highlight">等权买入持有</span></div>
-                <div style="font-size:12px;color:#5a6a80;">数据来自 CSV · 自动渲染</div>
+                <div>权重方法：<span class="highlight">过去 252 日协方差 · 风险贡献均衡</span></div>
+                <div class="muted">数据源：marp_nav.csv · marp_annual_metrics.csv · marp_holding.csv · marp_weights.csv</div>
             </div>
         </header>
 
+        <!-- KPI 卡片 -->
         <div class="kpi-grid" id="kpiGrid"></div>
 
+        <!-- 净值曲线：策略 + 各 ETF -->
         <div class="chart-grid">
             <div class="chart-box full">
-                <div class="chart-title">📈 策略净值 vs 等权基准 <span class="badge">起点归一</span></div>
+                <div class="chart-title">
+                    <div class="label-wrap">
+                        <span>📈 策略净值 vs 各 ETF 净值</span>
+                        <span class="badge">起点归一 · 全部叠加</span>
+                    </div>
+                    <span class="text-muted" id="navRangeLabel"></span>
+                </div>
                 <div class="chart-wrapper tall"><canvas id="navChart"></canvas></div>
+                <div class="legend-inline" id="navLegend"></div>
+            </div>
+        </div>
+
+        <!-- 回撤曲线 -->
+        <div class="chart-grid">
+            <div class="chart-box full">
+                <div class="chart-title">
+                    <div class="label-wrap">
+                        <span>📉 策略回撤曲线</span>
+                        <span class="badge">相对历史最高点</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper"><canvas id="drawdownChart"></canvas></div>
                 <div class="legend-inline">
-                    <span><span class="dot" style="background:#f0c27f;"></span>策略净值</span>
-                    <span><span class="dot" style="background:#4a90d9;"></span>等权基准（买入持有）</span>
+                    <span><span class="dot" style="background:#fc5c7d;"></span>回撤 (%)</span>
                 </div>
             </div>
         </div>
 
+        <!-- 年度收益率 & 回撤 -->
         <div class="chart-grid">
             <div class="chart-box">
-                <div class="chart-title">📊 年度收益率</div>
+                <div class="chart-title">
+                    <div class="label-wrap">
+                        <span>📊 年度收益率</span>
+                        <span class="badge">总收益</span>
+                    </div>
+                </div>
                 <div class="chart-wrapper"><canvas id="annualBarChart"></canvas></div>
             </div>
             <div class="chart-box">
-                <div class="chart-title">📉 年度最大回撤</div>
+                <div class="chart-title">
+                    <div class="label-wrap">
+                        <span>📉 年度最大回撤</span>
+                        <span class="badge">风险</span>
+                    </div>
+                </div>
                 <div class="chart-wrapper"><canvas id="annualDrawdownChart"></canvas></div>
             </div>
         </div>
 
-        <div class="chart-box full" style="margin-bottom:28px;">
-            <div class="flex-between">
-                <div class="chart-title">📋 年度业绩明细</div>
-                <span class="text-muted">交易日数 · 风险调整指标</span>
+        <!-- 年度明细表 -->
+        <div class="chart-box full" style="margin-bottom:24px;">
+            <div class="flex-between" style="margin-bottom:6px;">
+                <div class="chart-title" style="margin-bottom:0;">
+                    <div class="label-wrap">
+                        <span>📋 年度业绩明细</span>
+                        <span class="badge">风险调整指标</span>
+                    </div>
+                </div>
+                <span class="text-muted">单位：% · 交易日天数</span>
             </div>
             <div class="table-wrap" id="annualTableWrap"></div>
         </div>
 
+        <!-- 风险平价权重历史 -->
+        <div class="chart-box full" style="margin-bottom:24px;">
+            <div class="chart-title">
+                <div class="label-wrap">
+                    <span>🧮 风险平价权重历史</span>
+                    <span class="badge">每次调仓的优化结果 · 等权参考 16.67%</span>
+                </div>
+            </div>
+            <div class="chart-wrapper tall"><canvas id="weightsChart"></canvas></div>
+            <div class="legend-inline" id="weightsLegend"></div>
+        </div>
+
+        <!-- 持仓金额堆叠 -->
         <div class="chart-box full">
             <div class="chart-title">
-                🧩 各 ETF 仓位配比
-                <span class="badge">虚线 = 目标仓位 20% · 竖线 = 再平衡</span>
+                <div class="label-wrap">
+                    <span>💰 持仓市值堆叠（含现金）</span>
+                    <span class="badge">绝对金额（元）</span>
+                </div>
             </div>
-            <div class="chart-wrapper tall"><canvas id="holdingChart"></canvas></div>
-            <div class="legend-inline" id="holdingLegend"></div>
+            <div class="chart-wrapper tall"><canvas id="valueStackChart"></canvas></div>
+            <div class="legend-inline" id="valueStackLegend"></div>
+        </div>
+
+        <div class="footer">
+            数据周期：<span id="footerRange"></span> ·
+            页面自动读取同目录 CSV 文件渲染 ·
+            <span style="color:#c8a5f0;">MARP</span> 跨境多资产风险平价看板
         </div>
     </div>
 </div>
 
 <script>
-// ============================================================
-// 配置：ETF 列表与颜色
-// ============================================================
+/* ============================================================
+ * 配置
+ * ============================================================ */
 const ETF_LIST = [
-    { code: '518880.SH', name: '黄金ETF',   color: '#f0c27f' },
-    { code: '159920.SZ', name: '恒生ETF',   color: '#4a90d9' },
-    { code: '159941.SZ', name: '纳指ETF',   color: '#a87fd9' },
-    { code: '513030.SH', name: '德国ETF',   color: '#4cd9a0' },
-    { code: '513500.SH', name: '标普500ETF', color: '#fc5c7d' },
+    { code: '518880.SH', name: '黄金ETF',    color: '#f0c27f' },
+    { code: '159920.SZ', name: '恒生ETF',    color: '#4a90d9' },
+    { code: '159941.SZ', name: '纳指ETF',    color: '#a87fd9' },
+    { code: '513000.SH', name: '日经ETF',    color: '#4cd9a0' },
+    { code: '513030.SH', name: '德国ETF',    color: '#fc5c7d' },
+    { code: '513500.SH', name: '标普500ETF', color: '#5ac8d9' },
 ];
 const N_ETF = ETF_LIST.length;
-const TARGET_PCT = 100 / N_ETF;  // 等权目标仓位
+const EQUAL_REF_PCT = 100 / N_ETF;   // 等权参考线 16.67%
+const RISK_FREE = 0.025;
+const TRADING_DAYS = 252;
 
-// ============================================================
-// 工具：解析 CSV（保留日期字符串，只把真正的数字转数值）
-// ============================================================
+/* ============================================================
+ * 工具函数
+ * ============================================================ */
 function parseCSV(text) {
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
     const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
@@ -215,27 +454,35 @@ function parseCSV(text) {
         const row = {};
         headers.forEach((h, idx) => {
             let val = values[idx] || '';
-            // 仅当整串都是数字时转 float（避免 "2015-06-10" → 2015）
-            if (/^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(val)) val = parseFloat(val);
-            row[h] = val;
+            // 日期识别：形如 YYYY-MM-DD
+            if (/^\d{4}-\d{2}-\d{2}/.test(val)) {
+                row[h] = val;
+            } else if (/^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(val)) {
+                row[h] = parseFloat(val);
+            } else {
+                row[h] = val;
+            }
         });
+        // 处理未命名索引列（pandas to_csv 可能生成空名或 Unnamed: 0）
+        if (!row.date) {
+            const firstHeader = headers[0];
+            if (firstHeader === '' || firstHeader.startsWith('Unnamed')) {
+                row.date = row[firstHeader] || values[0];
+            }
+        }
         data.push(row);
     }
     return data;
 }
 
-// ============================================================
-// 工具：从净值序列计算整体指标
-// ============================================================
-function computeMetrics(navData) {
+function calcMetrics(navData) {
     const first = navData[0]['策略净值'];
     const last  = navData[navData.length - 1]['策略净值'];
     const totalReturn = last / first - 1;
     const nDays = navData.length - 1;
-    const years = nDays / 252;
+    const years = nDays / TRADING_DAYS;
     const annualReturn = years > 0 ? Math.pow(1 + totalReturn, 1 / years) - 1 : 0;
 
-    // 日收益率
     const rets = [];
     for (let i = 1; i < navData.length; i++) {
         const p0 = navData[i - 1]['策略净值'];
@@ -244,13 +491,9 @@ function computeMetrics(navData) {
     }
     const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
     const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length - 1);
-    const std = Math.sqrt(variance);
-    const annualVol = std * Math.sqrt(252);
+    const annualVol = Math.sqrt(variance) * Math.sqrt(TRADING_DAYS);
+    const sharpe = annualVol > 0 ? (annualReturn - RISK_FREE) / annualVol : 0;
 
-    const rf = 0.025;
-    const sharpe = annualVol > 0 ? (annualReturn - rf) / annualVol : 0;
-
-    // 最大回撤
     let peak = first, maxDD = 0;
     navData.forEach(d => {
         const v = d['策略净值'];
@@ -260,29 +503,57 @@ function computeMetrics(navData) {
     });
     const calmar = maxDD !== 0 ? annualReturn / Math.abs(maxDD) : 0;
 
-    return { totalReturn, annualReturn, annualVol, sharpe, maxDD, calmar };
+    return { totalReturn, annualReturn, annualVol, sharpe, maxDD, calmar, days: nDays, years };
 }
 
-// ============================================================
-// 主流程：加载 CSV → 渲染看板
-// ============================================================
-const files = [
-    'mabs_nav.csv',
-    'mabs_annual_metrics.csv',
-    'mabs_holding.csv'
+function buildDrawdownSeries(navData) {
+    let peak = navData[0]['策略净值'];
+    const arr = [];
+    navData.forEach(d => {
+        const v = d['策略净值'];
+        if (v > peak) peak = v;
+        arr.push(((v - peak) / peak) * 100);
+    });
+    return arr;
+}
+
+function fmtPct(v, decimals = 1) {
+    if (v === undefined || v === null || isNaN(v)) return '--';
+    return (v * 100).toFixed(decimals) + '%';
+}
+function fmtNum(v, decimals = 2) {
+    if (v === undefined || v === null || isNaN(v)) return '--';
+    return v.toFixed(decimals);
+}
+function fmtMoney(v) {
+    if (v === undefined || v === null || isNaN(v)) return '--';
+    return v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+/* ============================================================
+ * 加载并渲染
+ * ============================================================ */
+const CSV_FILES = [
+    'marp_nav.csv',
+    'marp_annual_metrics.csv',
+    'marp_holding.csv',
+    'marp_weights.csv',
 ];
 
-let loadedData = {};
+const loadedData = {};
 
-Promise.all(files.map(file =>
+Promise.all(CSV_FILES.map(file =>
     fetch(file)
         .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status} — ${file}`);
+            if (!res.ok) {
+                if (file === 'marp_weights.csv') return '';   // 权重文件可选
+                throw new Error(`HTTP ${res.status} — ${file}`);
+            }
             return res.text();
         })
         .then(text => {
             const key = file.replace('.csv', '');
-            loadedData[key] = parseCSV(text);
+            loadedData[key] = text ? parseCSV(text) : [];
         })
 )).then(() => {
     document.getElementById('loading').classList.add('hidden');
@@ -292,41 +563,47 @@ Promise.all(files.map(file =>
     document.getElementById('loading').innerHTML = `
         <div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>
         <div style="color:#8899b0;margin-top:12px;">${err.message}</div>
-        <div style="color:#5a6a80;margin-top:8px;font-size:14px;">
-            请确保以下 CSV 文件与当前 HTML 在同一目录：<br>
-            mabs_nav.csv, mabs_annual_metrics.csv, mabs_holding.csv
+        <div style="color:#5a6a80;margin-top:10px;font-size:14px;line-height:1.8;">
+            请确保以下 CSV 文件与本 HTML 位于同一目录：<br>
+            <code style="color:#c8a5f0;">marp_nav.csv</code> ·
+            <code style="color:#c8a5f0;">marp_annual_metrics.csv</code> ·
+            <code style="color:#c8a5f0;">marp_holding.csv</code> ·
+            <code style="color:#c8a5f0;">marp_weights.csv</code>（可选）
         </div>
     `;
     console.error(err);
 });
 
-// ============================================================
-// 渲染函数
-// ============================================================
+/* ============================================================
+ * 渲染主看板
+ * ============================================================ */
 function renderDashboard(data) {
-    const nav    = data['mabs_nav'] || [];
-    const annual = data['mabs_annual_metrics'] || [];
-    const holding = data['mabs_holding'] || [];
+    const nav     = data['marp_nav'] || [];
+    const annual  = data['marp_annual_metrics'] || [];
+    const holding = data['marp_holding'] || [];
+    const weights = data['marp_weights'] || [];
 
     if (!nav.length || !annual.length || !holding.length) {
         alert('关键数据为空，请检查 CSV 文件内容');
         return;
     }
 
-    // ---- 日期范围 ----
+    /* ---------- 日期范围 ---------- */
     const firstDate = nav[0].date;
     const lastDate  = nav[nav.length - 1].date;
-    document.getElementById('dateRange').textContent = `${firstDate}  ~  ${lastDate}`;
+    document.getElementById('dateRange').textContent = `${firstDate} ~ ${lastDate}`;
+    document.getElementById('footerRange').textContent = `${firstDate} ~ ${lastDate}`;
+    document.getElementById('navRangeLabel').textContent = `${nav.length} 个交易日`;
 
-    // ---- KPI 卡片（从净值序列计算）----
-    const m = computeMetrics(nav);
+    /* ---------- KPI 卡片 ---------- */
+    const m = calcMetrics(nav);
     const kpiConfig = [
-        { label: '总收益率',   value: m.totalReturn,  fmt: v => (v * 100).toFixed(1) + '%', cls: m.totalReturn >= 0 ? 'positive' : 'negative' },
-        { label: '年化收益率', value: m.annualReturn, fmt: v => (v * 100).toFixed(1) + '%', cls: m.annualReturn >= 0 ? 'positive' : 'negative' },
-        { label: '年化波动率', value: m.annualVol,    fmt: v => (v * 100).toFixed(1) + '%', cls: 'neutral' },
-        { label: '夏普比率',   value: m.sharpe,       fmt: v => v.toFixed(2),               cls: m.sharpe >= 0 ? 'positive' : 'negative' },
-        { label: '最大回撤',   value: m.maxDD,        fmt: v => (v * 100).toFixed(1) + '%', cls: 'negative' },
-        { label: 'Calmar比率', value: m.calmar,       fmt: v => v.toFixed(2),               cls: m.calmar >= 0 ? 'positive' : 'negative' },
+        { label: '总收益率',    value: m.totalReturn,  fmt: v => fmtPct(v, 1), cls: m.totalReturn >= 0 ? 'positive' : 'negative', sub: `${m.years.toFixed(2)} 年` },
+        { label: '年化收益率',  value: m.annualReturn, fmt: v => fmtPct(v, 1), cls: m.annualReturn >= 0 ? 'positive' : 'negative', sub: '复利年化' },
+        { label: '年化波动率',  value: m.annualVol,    fmt: v => fmtPct(v, 1), cls: 'neutral',  sub: `√${TRADING_DAYS} 年化` },
+        { label: '夏普比率',    value: m.sharpe,       fmt: v => fmtNum(v, 2), cls: m.sharpe >= 0 ? 'positive' : 'negative', sub: `无风险 ${(RISK_FREE * 100).toFixed(1)}%` },
+        { label: '最大回撤',    value: m.maxDD,        fmt: v => fmtPct(v, 1), cls: 'negative', sub: '历史最高点回撤' },
+        { label: 'Calmar比率',  value: m.calmar,       fmt: v => fmtNum(v, 2), cls: m.calmar >= 0 ? 'positive' : 'negative', sub: '年化收益 / |回撤|' },
     ];
     const kpiGrid = document.getElementById('kpiGrid');
     kpiGrid.innerHTML = '';
@@ -336,59 +613,75 @@ function renderDashboard(data) {
         div.innerHTML = `
             <div class="kpi-label">${item.label}</div>
             <div class="kpi-value ${item.cls}">${item.fmt(item.value)}</div>
+            <div class="kpi-sub">${item.sub}</div>
         `;
         kpiGrid.appendChild(div);
     });
 
-    // ---- 净值曲线图 ----
-    const dates    = nav.map(d => d.date);
-    const strategy = nav.map(d => d['策略净值']);
-    const bench    = nav.map(d => d['等权基准净值']);
+    /* ---------- 净值曲线图：策略 + 各 ETF ---------- */
+    const navDates = nav.map(d => d.date);
+    const navStrategy = nav.map(d => d['策略净值']);
+
+    // ETF 净值列名为 "黄金ETF_净值" 等
+    const etfNavSeries = ETF_LIST.map(e => {
+        const col = e.name + '_净值';
+        return nav.map(d => d[col]);
+    });
 
     const navCtx = document.getElementById('navChart').getContext('2d');
     if (window._navChart) window._navChart.destroy();
+
+    const navDatasets = [{
+        label: 'MARP 策略净值',
+        data: navStrategy,
+        borderColor: '#c8a5f0',
+        backgroundColor: 'rgba(200,165,240,0.08)',
+        borderWidth: 2.6,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        tension: 0.1,
+        fill: true,
+    }];
+    ETF_LIST.forEach((e, k) => {
+        navDatasets.push({
+            label: e.name,
+            data: etfNavSeries[k],
+            borderColor: e.color,
+            borderWidth: 1.0,
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            tension: 0.1,
+            borderDash: [4, 3],
+            fill: false,
+            hidden: false,
+        });
+    });
+
     window._navChart = new Chart(navCtx, {
         type: 'line',
-        data: {
-            labels: dates,
-            datasets: [
-                {
-                    label: '策略净值',
-                    data: strategy,
-                    borderColor: '#f0c27f',
-                    backgroundColor: 'rgba(240,194,127,0.10)',
-                    borderWidth: 2,
-                    pointRadius: 0,
-                    tension: 0.1,
-                    fill: true
-                },
-                {
-                    label: '等权基准',
-                    data: bench,
-                    borderColor: '#4a90d9',
-                    borderWidth: 1.5,
-                    pointRadius: 0,
-                    tension: 0.1,
-                    borderDash: [5, 4],
-                    fill: false
-                }
-            ]
-        },
+        data: { labels: navDates, datasets: navDatasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
+            animation: { duration: 500 },
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    backgroundColor: 'rgba(11,14,23,0.95)',
+                    titleColor: '#c8a5f0',
+                    bodyColor: '#e6edf5',
+                    borderColor: '#26303f',
+                    borderWidth: 1,
+                    padding: 10,
                     callbacks: {
-                        label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString('en-US', {maximumFractionDigits: 0})}`
+                        label: ctx => `${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y)}`
                     }
                 }
             },
             scales: {
                 x: {
-                    ticks: { maxTicksLimit: 20, color: '#8899b0', autoSkip: true },
+                    ticks: { maxTicksLimit: 18, color: '#8899b0', autoSkip: true, maxRotation: 0 },
                     grid: { color: '#1a222f' }
                 },
                 y: {
@@ -402,7 +695,59 @@ function renderDashboard(data) {
         }
     });
 
-    // ---- 年度收益率柱状图 ----
+    /* ---------- 回撤曲线图 ---------- */
+    const ddSeries = buildDrawdownSeries(nav);
+    const ddCtx = document.getElementById('drawdownChart').getContext('2d');
+    if (window._ddSeriesChart) window._ddSeriesChart.destroy();
+    window._ddSeriesChart = new Chart(ddCtx, {
+        type: 'line',
+        data: {
+            labels: navDates,
+            datasets: [{
+                label: '回撤 (%)',
+                data: ddSeries,
+                borderColor: '#fc5c7d',
+                backgroundColor: 'rgba(252,92,125,0.15)',
+                borderWidth: 1.5,
+                pointRadius: 0,
+                pointHoverRadius: 3,
+                tension: 0.05,
+                fill: true,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(11,14,23,0.95)',
+                    titleColor: '#fc5c7d',
+                    bodyColor: '#e6edf5',
+                    borderColor: '#26303f',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => `回撤: ${ctx.parsed.y.toFixed(2)}%`
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { maxTicksLimit: 18, color: '#8899b0', autoSkip: true, maxRotation: 0 },
+                    grid: { color: '#1a222f' }
+                },
+                y: {
+                    max: 0,
+                    ticks: { callback: v => v.toFixed(0) + '%', color: '#8899b0' },
+                    grid: { color: '#1a222f' }
+                }
+            }
+        }
+    });
+
+    /* ---------- 年度收益率柱状图 ---------- */
     const years = annual.map(r => String(r['年份']));
     const retValues = annual.map(r => r['总收益率'] * 100);
 
@@ -415,156 +760,253 @@ function renderDashboard(data) {
             datasets: [{
                 label: '年度收益率 (%)',
                 data: retValues,
-                backgroundColor: retValues.map(v => v >= 0 ? 'rgba(76,217,160,0.7)' : 'rgba(252,107,107,0.7)'),
+                backgroundColor: retValues.map(v => v >= 0 ? 'rgba(76,217,160,0.65)' : 'rgba(252,107,107,0.65)'),
                 borderColor: retValues.map(v => v >= 0 ? '#4cd9a0' : '#fc6b6b'),
-                borderWidth: 1.5
+                borderWidth: 1.5,
+                borderRadius: 4,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(11,14,23,0.95)',
+                    titleColor: '#c8a5f0',
+                    bodyColor: '#e6edf5',
+                    borderColor: '#26303f',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => `收益率: ${ctx.parsed.y.toFixed(2)}%`
+                    }
+                }
+            },
             scales: {
-                y: { ticks: { callback: v => v.toFixed(0) + '%', color: '#8899b0' }, grid: { color: '#1a222f' } },
-                x: { ticks: { color: '#8899b0' }, grid: { display: false } }
+                y: {
+                    ticks: { callback: v => v.toFixed(0) + '%', color: '#8899b0' },
+                    grid: { color: '#1a222f' }
+                },
+                x: {
+                    ticks: { color: '#8899b0', maxRotation: 0 },
+                    grid: { display: false }
+                }
             }
         }
     });
 
-    // ---- 年度最大回撤柱状图 ----
+    /* ---------- 年度最大回撤柱状图 ---------- */
     const ddValues = annual.map(r => r['最大回撤'] * 100);
-
-    const ddCtx = document.getElementById('annualDrawdownChart').getContext('2d');
+    const ddCtx2 = document.getElementById('annualDrawdownChart').getContext('2d');
     if (window._ddChart) window._ddChart.destroy();
-    window._ddChart = new Chart(ddCtx, {
+    window._ddChart = new Chart(ddCtx2, {
         type: 'bar',
         data: {
             labels: years,
             datasets: [{
                 label: '最大回撤 (%)',
                 data: ddValues,
-                backgroundColor: 'rgba(252,107,107,0.6)',
+                backgroundColor: 'rgba(252,107,107,0.55)',
                 borderColor: '#fc6b6b',
-                borderWidth: 1.5
+                borderWidth: 1.5,
+                borderRadius: 4,
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(11,14,23,0.95)',
+                    titleColor: '#fc5c7d',
+                    bodyColor: '#e6edf5',
+                    borderColor: '#26303f',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => `最大回撤: ${ctx.parsed.y.toFixed(2)}%`
+                    }
+                }
+            },
             scales: {
-                y: { ticks: { callback: v => v.toFixed(0) + '%', color: '#8899b0' }, grid: { color: '#1a222f' } },
-                x: { ticks: { color: '#8899b0' }, grid: { display: false } }
+                y: {
+                    ticks: { callback: v => v.toFixed(0) + '%', color: '#8899b0' },
+                    grid: { color: '#1a222f' }
+                },
+                x: {
+                    ticks: { color: '#8899b0', maxRotation: 0 },
+                    grid: { display: false }
+                }
             }
         }
     });
 
-    // ---- 年度表格 ----
+    /* ---------- 年度明细表 ---------- */
     const tableWrap = document.getElementById('annualTableWrap');
     let tableHtml = `<table>
         <thead><tr>
-            <th>年份</th><th>总收益率</th><th>年化收益率</th><th>年化波动率</th>
-            <th>夏普比率</th><th>最大回撤</th><th>Calmar</th><th>交易日</th>
+            <th>年份</th>
+            <th>总收益率</th>
+            <th>年化收益率</th>
+            <th>年化波动率</th>
+            <th>夏普比率</th>
+            <th>最大回撤</th>
+            <th>Calmar</th>
+            <th>交易日</th>
         </tr></thead><tbody>`;
     annual.forEach(row => {
-        const yr     = row['年份'];
-        const totalR = row['总收益率'];
-        const annR   = row['年化收益率'];
-        const annV   = row['年化波动率'];
-        const sh     = row['夏普比率'];
-        const mdd    = row['最大回撤'];
-        const cal    = row['Calmar比率'];
-        const days   = row['交易日数'];
+        const yr    = row['年份'];
+        const tr    = row['总收益率'];
+        const ar    = row['年化收益率'];
+        const av    = row['年化波动率'];
+        const sh    = row['夏普比率'];
+        const mdd   = row['最大回撤'];
+        const cal   = row['Calmar比率'];
+        const days  = row['交易日数'];
         tableHtml += `<tr>
-            <td>${yr}</td>
-            <td class="num ${totalR >= 0 ? 'pos' : 'neg'}">${(totalR * 100).toFixed(1)}%</td>
-            <td class="num ${annR >= 0 ? 'pos' : 'neg'}">${(annR * 100).toFixed(1)}%</td>
-            <td class="num">${(annV * 100).toFixed(1)}%</td>
-            <td class="num">${sh.toFixed(2)}</td>
-            <td class="num neg">${(mdd * 100).toFixed(1)}%</td>
-            <td class="num">${cal.toFixed(2)}</td>
+            <td class="year-cell">${yr}</td>
+            <td class="num ${tr >= 0 ? 'pos' : 'neg'}">${(tr * 100).toFixed(2)}%</td>
+            <td class="num ${ar >= 0 ? 'pos' : 'neg'}">${(ar * 100).toFixed(2)}%</td>
+            <td class="num">${(av * 100).toFixed(2)}%</td>
+            <td class="num ${sh >= 0 ? 'pos' : 'neg'}">${sh.toFixed(2)}</td>
+            <td class="num neg">${(mdd * 100).toFixed(2)}%</td>
+            <td class="num ${cal >= 0 ? 'pos' : 'neg'}">${cal.toFixed(2)}</td>
             <td class="num">${days}</td>
         </tr>`;
     });
     tableHtml += '</tbody></table>';
     tableWrap.innerHTML = tableHtml;
 
-    // ---- 仓位配比图 ----
-    const hDates = holding.map(d => d.date);
-
-    // 每只 ETF 的仓位百分比
-    const etfPctSeries = ETF_LIST.map(e => {
-        return holding.map(d => {
-            const total = d['total_value'] || 0;
-            const v = d[e.code + '_value'] || 0;
-            return total > 0 ? (v / total) * 100 : 0;
-        });
+    /* ---------- 净值图例 ---------- */
+    const navLegend = document.getElementById('navLegend');
+    navLegend.innerHTML = '';
+    const stratSpan = document.createElement('span');
+    stratSpan.innerHTML = `<span class="dot" style="background:#c8a5f0;"></span>MARP 策略`;
+    navLegend.appendChild(stratSpan);
+    ETF_LIST.forEach(e => {
+        const span = document.createElement('span');
+        span.innerHTML = `<span class="dot" style="background:${e.color};"></span>${e.name}`;
+        navLegend.appendChild(span);
     });
 
-    // 检测再平衡日期：任意 ETF 仓位单日跳变 > 3%
-    const rebalanceDates = [];
-    for (let i = 1; i < holding.length; i++) {
-        let maxChange = 0;
-        ETF_LIST.forEach((e, k) => {
-            const prev = etfPctSeries[k][i - 1];
-            const curr = etfPctSeries[k][i];
-            maxChange = Math.max(maxChange, Math.abs(curr - prev));
+    /* ---------- 风险平价权重历史 ---------- */
+    if (weights.length > 0) {
+        const wDates = weights.map(r => r.date);
+        const wDatasets = ETF_LIST.map(e => ({
+            label: e.name,
+            data: weights.map(r => {
+                const v = r[e.code];
+                return (v === undefined || v === null || isNaN(v)) ? null : v * 100;
+            }),
+            borderColor: e.color,
+            backgroundColor: e.color + '22',
+            borderWidth: 1.8,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            tension: 0.15,
+            fill: false,
+            spanGaps: true,
+        }));
+        // 等权参考线
+        wDatasets.push({
+            label: `等权参考 ${EQUAL_REF_PCT.toFixed(2)}%`,
+            data: wDates.map(() => EQUAL_REF_PCT),
+            borderColor: 'rgba(200,216,232,0.35)',
+            borderWidth: 1.2,
+            borderDash: [6, 5],
+            pointRadius: 0,
+            fill: false,
         });
-        if (maxChange > 3) rebalanceDates.push(hDates[i]);
+
+        const wCtx = document.getElementById('weightsChart').getContext('2d');
+        if (window._wChart) window._wChart.destroy();
+        window._wChart = new Chart(wCtx, {
+            type: 'line',
+            data: { labels: wDates, datasets: wDatasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(11,14,23,0.95)',
+                        titleColor: '#c8a5f0',
+                        bodyColor: '#e6edf5',
+                        borderColor: '#26303f',
+                        borderWidth: 1,
+                        padding: 10,
+                        callbacks: {
+                            label: ctx => {
+                                if (ctx.parsed.y === null) return `${ctx.dataset.label}: --`;
+                                return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}%`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { maxTicksLimit: 14, color: '#8899b0', autoSkip: true, maxRotation: 0 },
+                        grid: { color: '#1a222f' }
+                    },
+                    y: {
+                        min: 0,
+                        ticks: { callback: v => v + '%', color: '#8899b0' },
+                        grid: { color: '#1a222f' },
+                        title: { display: true, text: '风险平价权重 (%)', color: '#8899b0', font: { size: 11 } }
+                    }
+                }
+            }
+        });
+
+        // 权重图例
+        const wLegend = document.getElementById('weightsLegend');
+        wLegend.innerHTML = '';
+        ETF_LIST.forEach(e => {
+            const span = document.createElement('span');
+            span.innerHTML = `<span class="dot" style="background:${e.color};"></span>${e.name}`;
+            wLegend.appendChild(span);
+        });
+        const refSpan = document.createElement('span');
+        refSpan.innerHTML = `<span class="dot" style="background:rgba(200,216,232,0.45);"></span>等权参考 ${EQUAL_REF_PCT.toFixed(2)}%`;
+        wLegend.appendChild(refSpan);
+    } else {
+        document.getElementById('weightsChart').parentElement.innerHTML =
+            '<div style="color:#5a6a80;text-align:center;padding:40px;">未找到 marp_weights.csv，权重历史图不显示</div>';
     }
 
-    // 自定义插件：在再平衡日画竖虚线
-    const rebalancePlugin = {
-        id: 'rebalanceLines',
-        afterDatasetsDraw(chart) {
-            const { ctx, chartArea, scales } = chart;
-            if (!rebalanceDates.length || !chartArea) return;
-            const xScale = scales.x;
-            ctx.save();
-            ctx.strokeStyle = 'rgba(240, 194, 127, 0.35)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
-            rebalanceDates.forEach(date => {
-                const idx = hDates.indexOf(date);
-                if (idx === -1) return;
-                const x = xScale.getPixelForValue(idx);
-                if (x < chartArea.left || x > chartArea.right) return;
-                ctx.beginPath();
-                ctx.moveTo(x, chartArea.top);
-                ctx.lineTo(x, chartArea.bottom);
-                ctx.stroke();
-            });
-            ctx.restore();
-        }
-    };
-
-    // 数据集：每只 ETF 一条线 + 一条目标线
-    const datasets = ETF_LIST.map((e, k) => ({
-        label: e.name + ' %',
-        data: etfPctSeries[k],
+    /* ---------- 持仓金额堆叠图 ---------- */
+    const hDates = holding.map(d => d.date);
+    const valueStackDatasets = ETF_LIST.map(e => ({
+        label: e.name,
+        data: holding.map(d => d[e.code + '_value'] || 0),
         borderColor: e.color,
-        backgroundColor: 'transparent',
-        borderWidth: 1.8,
+        backgroundColor: e.color + '99',
+        borderWidth: 1,
         pointRadius: 0,
-        tension: 0.15,
-        fill: false
+        tension: 0.05,
+        fill: true,
+        stack: 'stack1',
     }));
-    // 目标 20% 虚线
-    datasets.push({
-        label: `等权目标 ${TARGET_PCT.toFixed(0)}%`,
-        data: hDates.map(() => TARGET_PCT),
-        borderColor: 'rgba(200,216,232,0.45)',
-        borderWidth: 1.2,
-        borderDash: [6, 5],
+    valueStackDatasets.push({
+        label: '现金',
+        data: holding.map(d => d['cash'] || 0),
+        borderColor: '#7a8aa0',
+        backgroundColor: 'rgba(122,138,160,0.5)',
+        borderWidth: 1,
         pointRadius: 0,
-        fill: false
+        tension: 0.05,
+        fill: true,
+        stack: 'stack1',
     });
 
-    const holdCtx = document.getElementById('holdingChart').getContext('2d');
-    if (window._holdChart) window._holdChart.destroy();
-    window._holdChart = new Chart(holdCtx, {
+    const vsCtx = document.getElementById('valueStackChart').getContext('2d');
+    if (window._vsChart) window._vsChart.destroy();
+    window._vsChart = new Chart(vsCtx, {
         type: 'line',
-        data: { labels: hDates, datasets: datasets },
+        data: { labels: hDates, datasets: valueStackDatasets },
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -572,42 +1014,45 @@ function renderDashboard(data) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
+                    backgroundColor: 'rgba(11,14,23,0.95)',
+                    titleColor: '#c8a5f0',
+                    bodyColor: '#e6edf5',
+                    borderColor: '#26303f',
+                    borderWidth: 1,
+                    padding: 10,
                     callbacks: {
-                        label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)}%`
+                        label: ctx => `${ctx.dataset.label}: ${fmtMoney(ctx.parsed.y)} 元`
                     }
                 }
             },
             scales: {
                 x: {
-                    ticks: { maxTicksLimit: 18, color: '#8899b0', autoSkip: true },
+                    ticks: { maxTicksLimit: 18, color: '#8899b0', autoSkip: true, maxRotation: 0 },
                     grid: { color: '#1a222f' }
                 },
                 y: {
-                    min: 0,
-                    max: 50,
-                    ticks: { callback: v => v + '%', color: '#8899b0' },
-                    grid: { color: '#1a222f' },
-                    title: { display: true, text: '仓位占比 (%)', color: '#8899b0' }
+                    stacked: true,
+                    ticks: {
+                        color: '#8899b0',
+                        callback: v => (v / 10000).toFixed(0) + '万'
+                    },
+                    grid: { color: '#1a222f' }
                 }
             }
-        },
-        plugins: [rebalancePlugin]
+        }
     });
 
-    // ---- 图例（动态生成）----
-    const legendWrap = document.getElementById('holdingLegend');
-    legendWrap.innerHTML = '';
+    // 堆叠图图例
+    const vsLegend = document.getElementById('valueStackLegend');
+    vsLegend.innerHTML = '';
     ETF_LIST.forEach(e => {
         const span = document.createElement('span');
         span.innerHTML = `<span class="dot" style="background:${e.color};"></span>${e.name}`;
-        legendWrap.appendChild(span);
+        vsLegend.appendChild(span);
     });
-    const targetSpan = document.createElement('span');
-    targetSpan.innerHTML = `<span class="dot" style="background:rgba(200,216,232,0.6);"></span>等权目标 ${TARGET_PCT.toFixed(0)}%`;
-    legendWrap.appendChild(targetSpan);
-    const rbSpan = document.createElement('span');
-    rbSpan.innerHTML = `<span class="dot" style="background:rgba(240,194,127,0.6);"></span>再平衡日（竖线）`;
-    legendWrap.appendChild(rbSpan);
+    const cashSpan = document.createElement('span');
+    cashSpan.innerHTML = `<span class="dot" style="background:rgba(122,138,160,0.7);"></span>现金`;
+    vsLegend.appendChild(cashSpan);
 }
 </script>
 
