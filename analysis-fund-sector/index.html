@@ -5,17 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>主动权益基金 · 行业仓位测算</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js">
-    </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        /* ===== 深色主题（与银行策略看板统一） ===== */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        /* ===== 深色主题 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: #0b0e17;
@@ -23,10 +17,7 @@
             padding: 24px;
             min-height: 100vh;
         }
-        .container {
-            max-width: 1440px;
-            margin: 0 auto;
-        }
+        .container { max-width: 1440px; margin: 0 auto; }
 
         /* 加载状态 */
         .loading {
@@ -37,26 +28,21 @@
         }
         .loading .spinner {
             display: inline-block;
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border: 4px solid #1f2a3a;
             border-top-color: #f0c27f;
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             margin-bottom: 16px;
         }
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             flex-wrap: wrap;
-            margin-bottom: 28px;
+            margin-bottom: 20px;
             padding: 20px 24px;
             background: linear-gradient(145deg, #141b26, #0f1620);
             border-radius: 20px;
@@ -82,20 +68,56 @@
             border-radius: 12px;
             margin-right: 6px;
         }
-        .header-right {
-            text-align: right;
-            font-size: 13px;
+        .header-right { text-align: right; font-size: 13px; color: #8899b0; }
+        .header-right .highlight { color: #f0c27f; }
+
+        /* ===== 基金类型 Tab ===== */
+        .fund-tabs {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            background: #141b26;
+            border: 1px solid #1f2a3a;
+            border-radius: 14px;
+            padding: 8px 12px;
+            margin-bottom: 20px;
+        }
+        .fund-tabs button {
+            background: transparent;
             color: #8899b0;
+            border: 1px solid transparent;
+            border-radius: 9px;
+            padding: 7px 18px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all .18s ease;
+            font-family: inherit;
+            white-space: nowrap;
         }
-        .header-right .highlight {
-            color: #f0c27f;
+        .fund-tabs button:hover {
+            background: #1a2332;
+            color: #c8d8e8;
         }
+        .fund-tabs button.active {
+            background: linear-gradient(135deg, #f0c27f, #e8a85c);
+            color: #0b0e17;
+            font-weight: 700;
+            box-shadow: 0 2px 10px rgba(240, 194, 127, .22);
+        }
+        .fund-tabs button .cnt {
+            font-size: 11px;
+            opacity: .75;
+            margin-left: 6px;
+            font-weight: 400;
+        }
+        .fund-tabs button.active .cnt { opacity: .8; }
 
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 14px;
-            margin-bottom: 28px;
+            margin-bottom: 20px;
         }
         .kpi-card {
             background: #141b26;
@@ -110,23 +132,11 @@
             color: #7a8aa0;
             margin-bottom: 4px;
         }
-        .kpi-card .value {
-            font-size: 22px;
-            font-weight: 700;
-        }
-        .kpi-card .value.positive {
-            color: #4cd9a0;
-        }
-        .kpi-card .value.negative {
-            color: #fc6b6b;
-        }
-        .kpi-card .value.neutral {
-            color: #f0c27f;
-        }
-        .kpi-card .sub {
-            font-size: 11px;
-            color: #5a6a80;
-        }
+        .kpi-card .value { font-size: 22px; font-weight: 700; }
+        .kpi-card .value.positive { color: #4cd9a0; }
+        .kpi-card .value.negative { color: #fc6b6b; }
+        .kpi-card .value.neutral { color: #f0c27f; }
+        .kpi-card .sub { font-size: 11px; color: #5a6a80; }
 
         .controls {
             display: flex;
@@ -157,9 +167,7 @@
             outline: none;
             min-width: 140px;
         }
-        .controls select:focus {
-            border-color: #f0c27f;
-        }
+        .controls select:focus { border-color: #f0c27f; }
 
         .chart-grid {
             display: grid;
@@ -186,13 +194,8 @@
             font-size: 12px;
             color: #7a8aa0;
         }
-        .chart-container {
-            width: 100%;
-            height: 280px;
-        }
-        .chart-container.tall {
-            height: 340px;
-        }
+        .chart-container { width: 100%; height: 280px; }
+        .chart-container.tall { height: 340px; }
 
         .table-wrap {
             background: #141b26;
@@ -253,71 +256,23 @@
             background: #141b26;
             z-index: 1;
         }
-        .table-scroll tr:hover td {
-            background: #1a2332;
-        }
-        .table-scroll tr:hover td:first-child {
-            background: #1a2332;
-        }
+        .table-scroll tr:hover td { background: #1a2332; }
+        .table-scroll tr:hover td:first-child { background: #1a2332; }
 
-        .legend-inline {
-            display: flex;
-            gap: 18px;
-            flex-wrap: wrap;
-            margin-top: 6px;
-            font-size: 12px;
-            color: #8899b0;
-        }
-        .legend-inline .dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 3px;
-            margin-right: 6px;
-        }
-        .text-muted {
-            color: #5a6a80;
-            font-size: 12px;
-        }
-        .hidden {
-            display: none !important;
-        }
-        .flex-between {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+        .hidden { display: none !important; }
 
         @media (max-width: 900px) {
-            .chart-grid {
-                grid-template-columns: 1fr;
-            }
-            .header {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .header-right {
-                text-align: left;
-                width: 100%;
-            }
-            .kpi-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
+            .chart-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 10px; }
+            .header-right { text-align: left; width: 100%; }
+            .kpi-grid { grid-template-columns: repeat(4, 1fr); }
         }
         @media (max-width: 600px) {
-            .kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            body {
-                padding: 12px;
-            }
-            .chart-container {
-                height: 220px;
-            }
-            .chart-container.tall {
-                height: 260px;
-            }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            body { padding: 12px; }
+            .chart-container { height: 220px; }
+            .chart-container.tall { height: 260px; }
+            .fund-tabs { overflow-x: auto; flex-wrap: nowrap; }
         }
     </style>
 </head>
@@ -345,6 +300,9 @@
                     <div style="font-size:12px;color:#5a6a80;">自动加载 · 同目录Excel</div>
                 </div>
             </header>
+
+            <!-- 基金类型切换 -->
+            <div class="fund-tabs" id="fundTabs"></div>
 
             <section class="kpi-grid" id="kpiGrid">
                 <div class="kpi-card">
@@ -441,10 +399,13 @@
         var currentSheet = '';
         var currentData = [];
         var chartInstances = {};
+        var sheetOrder = [];          // 保持原始 sheet 顺序
+        var firstRenderDone = false;
 
         var $ = function(id) { return document.getElementById(id); };
         var industrySelect = $('industrySelect');
         var windowSelect = $('windowSelect');
+        var fundTabs = $('fundTabs');
 
         function formatPct(v) { return (v * 100).toFixed(2) + '%'; }
 
@@ -481,6 +442,36 @@
         }
 
         // ================================================================
+        //  Tab 管理
+        // ================================================================
+        function initTabs(sheetNames) {
+            fundTabs.innerHTML = '';
+            sheetNames.forEach(function(name) {
+                var data = allSheetData[name];
+                var latest = getLatestRow(data);
+                var cnt = latest ? (latest[latest.length - 1] || '') : '';
+
+                var btn = document.createElement('button');
+                btn.dataset.sheet = name;
+                btn.innerHTML = name + (cnt !== '' ? '<span class="cnt">' + cnt + '只</span>' : '');
+                btn.onclick = function() {
+                    if (currentSheet === name) return;
+                    setActiveTab(name);
+                    renderAll(name);
+                };
+                fundTabs.appendChild(btn);
+            });
+        }
+
+        function setActiveTab(sheetName) {
+            var btns = fundTabs.querySelectorAll('button');
+            for (var i = 0; i < btns.length; i++) {
+                if (btns[i].dataset.sheet === sheetName) btns[i].classList.add('active');
+                else btns[i].classList.remove('active');
+            }
+        }
+
+        // ================================================================
         //  渲染
         // ================================================================
         function renderAll(sheetName) {
@@ -497,6 +488,7 @@
                 $('dateRange').textContent = '📅 ' + latest[0] + ' 更新';
             }
 
+            setActiveTab(sheetName);
             updateKPI(latest);
             populateSelect(data);
             updateTable(data);
@@ -505,13 +497,20 @@
             $('loading').classList.add('hidden');
             $('dashboard').classList.remove('hidden');
 
-            // ✅ 关键修复：延迟渲染图表，确保 DOM 完成布局
-            setTimeout(function() {
+            function drawCharts() {
                 updateTrendChart(data);
                 updateTreemap(latest);
                 updateCompareChart();
                 updateHeatmapChart(data);
-            }, 120);
+            }
+
+            // 首次渲染延迟，确保 DOM 完成布局；切换 Tab 时直接绘制
+            if (!firstRenderDone) {
+                firstRenderDone = true;
+                setTimeout(drawCharts, 120);
+            } else {
+                drawCharts();
+            }
         }
 
         // ---- KPI ----
@@ -533,14 +532,21 @@
             }
         }
 
-        // ---- 品种下拉 ----
+        // ---- 品种下拉（保留切换前的选择） ----
         function populateSelect(data) {
+            var prev = industrySelect.value;
             var options = '';
             INDUSTRIES.forEach(function(name) {
                 options += '<option value="' + name + '">' + name + '</option>';
             });
             industrySelect.innerHTML = options;
-            if (INDUSTRIES.indexOf('电子') !== -1) industrySelect.value = '电子';
+
+            var target;
+            if (prev && INDUSTRIES.indexOf(prev) !== -1) target = prev;
+            else if (INDUSTRIES.indexOf('电子') !== -1) target = '电子';
+            else target = INDUSTRIES[0];
+            industrySelect.value = target;
+
             industrySelect.onchange = function() { updateTrendChart(currentData, this.value); };
         }
 
@@ -598,17 +604,23 @@
             chart.resize();
         }
 
-        // ---- 对比图 ----
+        // ---- 对比图（各基金类型最新一期） ----
         function updateCompareChart() {
             var chart = getChart('compareChart');
             if (!chart) return;
-            var sheets = Object.keys(allSheetData);
+            var sheets = sheetOrder.filter(function(n) { return allSheetData[n]; });
             if (sheets.length === 0) return;
-            var allLatest = getLatestRow(allSheetData['全部基金'] || []);
-            if (!allLatest) return;
+
+            // 基准：优先用「全部基金」，否则第一个 sheet
+            var baseKey = sheets.indexOf('全部基金') !== -1 ? '全部基金' : sheets[0];
+            var baseLatest = getLatestRow(allSheetData[baseKey] || []);
+            if (!baseLatest) return;
+
             var top10 = INDUSTRIES.slice(0, 31).map(function(name, i) {
-                return { name: name, val: allLatest[i + 1] || 0 };
-            }).sort(function(a, b) { return b.val - a.val; }).slice(0, 10).map(function(d) { return d.name; });
+                return { name: name, val: baseLatest[i + 1] || 0 };
+            }).sort(function(a, b) { return b.val - a.val; })
+              .slice(0, 10)
+              .map(function(d) { return d.name; });
 
             var seriesData = {};
             sheets.forEach(function(sheetName) {
@@ -617,6 +629,7 @@
                 var row = getLatestRow(data);
                 if (row) seriesData[sheetName] = row;
             });
+
             var legendData = Object.keys(seriesData);
             var series = legendData.map(function(sheetName) {
                 var row = seriesData[sheetName];
@@ -626,6 +639,7 @@
                 });
                 return { name: sheetName, type: 'bar', data: data, barGap: '20%' };
             });
+
             var option = {
                 tooltip: { trigger: 'axis' },
                 legend: { data: legendData, textStyle: { color: '#c8d8e8' } },
@@ -715,6 +729,7 @@
                 bodyHtml += '</tr>';
             });
             body.innerHTML = bodyHtml;
+            $('tableScroll').scrollTop = 0;
         }
 
         // ---- ECharts 实例管理 ----
@@ -723,7 +738,6 @@
             if (!dom) return null;
             if (!chartInstances[id]) {
                 chartInstances[id] = echarts.init(dom, 'dark');
-                // 窗口变化时自适应
                 window.addEventListener('resize', function() {
                     if (chartInstances[id]) chartInstances[id].resize();
                 });
@@ -753,8 +767,15 @@
                     throw new Error('未找到有效数据，请检查 Excel 格式');
                 }
                 allSheetData = sheets;
-                var sheetNames = Object.keys(sheets);
-                var defaultSheet = sheetNames.indexOf('全部基金') !== -1 ? '全部基金' : sheetNames[0];
+
+                // 保持 Excel 原始 sheet 顺序（全部基金 → 普通股票型 → 偏股混合型 → 平衡混合型 ...）
+                sheetOrder = Object.keys(sheets);
+
+                // 生成类型切换 Tab
+                initTabs(sheetOrder);
+
+                // 默认展示「全部基金」
+                var defaultSheet = sheetOrder.indexOf('全部基金') !== -1 ? '全部基金' : sheetOrder[0];
                 renderAll(defaultSheet);
             })
             .catch(function(err) {
@@ -769,14 +790,12 @@
             });
 
         // ================================================================
-        //  ✅ 页面完全加载后再次强制刷新所有图表（双重保险）
+        //  页面完全加载后强制刷新所有图表（双重保险）
         // ================================================================
         window.addEventListener('load', function() {
             setTimeout(function() {
                 Object.keys(chartInstances).forEach(function(key) {
-                    if (chartInstances[key]) {
-                        chartInstances[key].resize();
-                    }
+                    if (chartInstances[key]) chartInstances[key].resize();
                 });
             }, 200);
         });
