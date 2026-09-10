@@ -592,11 +592,14 @@
                 return total > 0 ? (d.chip_value / total) * 100 : 0;
             });
 
-            // 找出季度重平衡日期（仓位跳变超过 3% 的日子）
+            // ★ 核心修改：调仓日判断 —— bank_shares 或 chip_shares 发生变化
             const rebalanceDates = [];
-            for (let i = 1; i < bankPct.length; i++) {
-                if (Math.abs(bankPct[i] - bankPct[i - 1]) > 3) {
-                    rebalanceDates.push(holdingDates[i]);
+            for (let i = 1; i < holding.length; i++) {
+                const prev = holding[i - 1];
+                const curr = holding[i];
+                if (curr.bank_shares !== prev.bank_shares ||
+                    curr.chip_shares !== prev.chip_shares) {
+                    rebalanceDates.push(curr.date);
                 }
             }
 
