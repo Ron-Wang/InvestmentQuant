@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>银行-科创芯片均衡策略 · 6:4 季度重平衡</title>
     <!-- Chart.js 轻量可视化 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js">
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -43,9 +42,7 @@
             margin-bottom: 16px;
         }
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            to { transform: rotate(360deg); }
         }
 
         .header {
@@ -111,15 +108,9 @@
             font-size: 22px;
             font-weight: 700;
         }
-        .kpi-value.positive {
-            color: #4cd9a0;
-        }
-        .kpi-value.negative {
-            color: #fc6b6b;
-        }
-        .kpi-value.neutral {
-            color: #f0c27f;
-        }
+        .kpi-value.positive { color: #4cd9a0; }
+        .kpi-value.negative { color: #fc6b6b; }
+        .kpi-value.neutral  { color: #f0c27f; }
 
         .chart-grid {
             display: grid;
@@ -133,9 +124,7 @@
             padding: 18px 18px 10px;
             border: 1px solid #1f2a3a;
         }
-        .chart-box.full {
-            grid-column: 1 / -1;
-        }
+        .chart-box.full { grid-column: 1 / -1; }
         .chart-box .chart-title {
             font-size: 15px;
             font-weight: 600;
@@ -157,9 +146,7 @@
             position: relative;
             height: 260px;
         }
-        .chart-wrapper.tall {
-            height: 320px;
-        }
+        .chart-wrapper.tall { height: 320px; }
 
         .table-wrap {
             overflow-x: auto;
@@ -188,12 +175,8 @@
             font-family: 'JetBrains Mono', monospace;
             text-align: right;
         }
-        .table-wrap .pos {
-            color: #4cd9a0;
-        }
-        .table-wrap .neg {
-            color: #fc6b6b;
-        }
+        .table-wrap .pos { color: #4cd9a0; }
+        .table-wrap .neg { color: #fc6b6b; }
 
         .legend-inline {
             display: flex;
@@ -210,43 +193,24 @@
             border-radius: 3px;
             margin-right: 6px;
         }
-        .text-muted {
-            color: #5a6a80;
-            font-size: 12px;
-        }
+        .text-muted { color: #5a6a80; font-size: 12px; }
         .flex-between {
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
         }
-        .hidden {
-            display: none !important;
-        }
+        .hidden { display: none !important; }
 
         @media (max-width: 900px) {
-            .chart-grid {
-                grid-template-columns: 1fr;
-            }
-            .header {
-                flex-direction: column;
-                gap: 10px;
-            }
-            .header-right {
-                text-align: left;
-                width: 100%;
-            }
-            .kpi-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
+            .chart-grid { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 10px; }
+            .header-right { text-align: left; width: 100%; }
+            .kpi-grid { grid-template-columns: repeat(4, 1fr); }
         }
         @media (max-width: 600px) {
-            .kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            body {
-                padding: 12px;
-            }
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            body { padding: 12px; }
         }
     </style>
 </head>
@@ -348,33 +312,6 @@
             return data;
         }
 
-        // 聚合年度收益/回撤（从净值数据计算）
-        function aggregateAnnual(navData) {
-            const years = {};
-            navData.forEach(d => {
-                const year = d.date.substring(0, 4);
-                if (!years[year]) years[year] = {
-                    start: d['策略净值'],
-                    end: d['策略净值'],
-                    max: d['策略净值'],
-                    min: d['策略净值']
-                };
-                const val = d['策略净值'];
-                if (val < years[year].min) years[year].min = val;
-                if (val > years[year].max) years[year].max = val;
-                years[year].end = val;
-            });
-            const keys = Object.keys(years).sort();
-            const result = {};
-            keys.forEach((y, idx) => {
-                const start = years[y].start;
-                const ret = (years[y].end - start) / start;
-                const drawdown = (years[y].min - years[y].max) / years[y].max;
-                result[y] = { return: ret, drawdown: drawdown };
-            });
-            return result;
-        }
-
         // ============================================================
         // 主流程：加载四个 CSV，渲染看板
         // ============================================================
@@ -416,8 +353,8 @@
         // ============================================================
         function renderDashboard(data) {
             const metrics = data['bcbs_metrics'];
-            const nav = data['bcbs_nav'];
-            const annual = data['bcbs_annual_metrics'];
+            const nav     = data['bcbs_nav'];
+            const annual  = data['bcbs_annual_metrics'];
             const holding = data['bcbs_holding'];
 
             if (!nav || !nav.length || !metrics || !metrics.length) {
@@ -427,18 +364,18 @@
 
             // ---- 日期范围 ----
             const first = nav[0].date;
-            const last = nav[nav.length - 1].date;
+            const last  = nav[nav.length - 1].date;
             document.getElementById('dateRange').textContent = `${first}  ~  ${last}`;
 
             // ---- KPI ----
             const kpiMap = {};
             metrics.forEach(row => { kpiMap[row['指标']] = row['数值']; });
             const kpiConfig = [
-                { label: '总收益率', key: '总收益率', fmt: v => (v * 100).toFixed(1) + '%' },
+                { label: '总收益率',   key: '总收益率',   fmt: v => (v * 100).toFixed(1) + '%' },
                 { label: '年化收益率', key: '年化收益率', fmt: v => (v * 100).toFixed(1) + '%' },
                 { label: '年化波动率', key: '年化波动率', fmt: v => (v * 100).toFixed(1) + '%' },
-                { label: '夏普比率', key: '夏普比率', fmt: v => v.toFixed(2) },
-                { label: '最大回撤', key: '最大回撤', fmt: v => (v * 100).toFixed(1) + '%' },
+                { label: '夏普比率',   key: '夏普比率',   fmt: v => v.toFixed(2) },
+                { label: '最大回撤',   key: '最大回撤',   fmt: v => (v * 100).toFixed(1) + '%' },
                 { label: 'Calmar比率', key: 'Calmar比率', fmt: v => v.toFixed(2) },
             ];
             const kpiGrid = document.getElementById('kpiGrid');
@@ -447,9 +384,11 @@
                 const val = kpiMap[item.key];
                 let cls = 'neutral';
                 if (val !== undefined) {
-                    if (item.key === '最大回撤') cls = (val < 0) ? 'negative' : 'positive';
-                    else if (['总收益率', '年化收益率', '夏普比率', 'Calmar比率'].includes(item.key)) cls = (val > 0) ?
-                        'positive' : 'negative';
+                    if (item.key === '最大回撤') {
+                        cls = (val < 0) ? 'negative' : 'positive';
+                    } else if (['总收益率', '年化收益率', '夏普比率', 'Calmar比率'].includes(item.key)) {
+                        cls = (val > 0) ? 'positive' : 'negative';
+                    }
                 }
                 const div = document.createElement('div');
                 div.className = 'kpi-card';
@@ -461,10 +400,10 @@
             });
 
             // ---- 净值图 ----
-            const dates = nav.map(d => d.date);
+            const dates    = nav.map(d => d.date);
             const strategy = nav.map(d => d['策略净值']);
-            const bank = nav.map(d => d['银行ETF基准净值']);
-            const chip = nav.map(d => d['芯片ETF基准净值']);
+            const bank     = nav.map(d => d['银行ETF基准净值']);
+            const chip     = nav.map(d => d['芯片ETF基准净值']);
 
             const navCtx = document.getElementById('navChart').getContext('2d');
             if (window._navChart) window._navChart.destroy();
@@ -473,12 +412,13 @@
                 data: {
                     labels: dates,
                     datasets: [
-                        { label: '策略净值', data: strategy, borderColor: '#f0c27f', backgroundColor: 'rgba(240,194,127,0.1)',
-                            borderWidth: 2, pointRadius: 0, tension: 0.1 },
-                        { label: '银行ETF', data: bank, borderColor: '#4a90d9', borderWidth: 1.5,
-                            pointRadius: 0, tension: 0.1, borderDash: [4, 4] },
-                        { label: '芯片ETF', data: chip, borderColor: '#fc5c7d', borderWidth: 1.5,
-                            pointRadius: 0, tension: 0.1, borderDash: [4, 4] }
+                        { label: '策略净值', data: strategy, borderColor: '#f0c27f',
+                          backgroundColor: 'rgba(240,194,127,0.1)', borderWidth: 2,
+                          pointRadius: 0, tension: 0.1 },
+                        { label: '银行ETF', data: bank, borderColor: '#4a90d9',
+                          borderWidth: 1.5, pointRadius: 0, tension: 0.1, borderDash: [4, 4] },
+                        { label: '芯片ETF', data: chip, borderColor: '#fc5c7d',
+                          borderWidth: 1.5, pointRadius: 0, tension: 0.1, borderDash: [4, 4] }
                     ]
                 },
                 options: {
@@ -492,10 +432,19 @@
                 }
             });
 
-            // ---- 年度收益率 ----
-            const annualRet = aggregateAnnual(nav);
-            const years = Object.keys(annualRet).sort();
-            const retValues = years.map(y => annualRet[y].return * 100);
+            // ---- 年度收益率 & 最大回撤：直接采用 CSV 现成数据 ----
+            const annualMap = {};
+            annual.forEach(row => {
+                annualMap[row['年份']] = {
+                    return:   row['总收益率'],
+                    drawdown: row['最大回撤']
+                };
+            });
+            const years     = Object.keys(annualMap).sort();
+            const retValues = years.map(y => annualMap[y].return * 100);
+            const ddValues  = years.map(y => annualMap[y].drawdown * 100);
+
+            // ---- 年度收益率柱状图 ----
             const barCtx = document.getElementById('annualBarChart').getContext('2d');
             if (window._barChart) window._barChart.destroy();
             window._barChart = new Chart(barCtx, {
@@ -505,9 +454,10 @@
                     datasets: [{
                         label: '年度收益率 (%)',
                         data: retValues,
-                        backgroundColor: retValues.map(v => v >= 0 ? 'rgba(76,217,160,0.7)' :
-                            'rgba(252,107,107,0.7)'),
-                        borderColor: retValues.map(v => v >= 0 ? '#4cd9a0' : '#fc6b6b'),
+                        backgroundColor: retValues.map(v => v >= 0
+                            ? 'rgba(76,217,160,0.7)' : 'rgba(252,107,107,0.7)'),
+                        borderColor:     retValues.map(v => v >= 0
+                            ? '#4cd9a0' : '#fc6b6b'),
                         borderWidth: 1.5
                     }]
                 },
@@ -516,14 +466,14 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { ticks: { callback: v => v + '%', color: '#8899b0' }, grid: { color: '#1a222f' } },
+                        y: { ticks: { callback: v => v + '%', color: '#8899b0' },
+                             grid: { color: '#1a222f' } },
                         x: { ticks: { color: '#8899b0' }, grid: { display: false } }
                     }
                 }
             });
 
-            // ---- 年度最大回撤 ----
-            const ddValues = years.map(y => annualRet[y].drawdown * 100);
+            // ---- 年度最大回撤柱状图 ----
             const ddCtx = document.getElementById('annualDrawdownChart').getContext('2d');
             if (window._ddChart) window._ddChart.destroy();
             window._ddChart = new Chart(ddCtx, {
@@ -543,13 +493,14 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        y: { ticks: { callback: v => v + '%', color: '#8899b0' }, grid: { color: '#1a222f' } },
+                        y: { ticks: { callback: v => v + '%', color: '#8899b0' },
+                             grid: { color: '#1a222f' } },
                         x: { ticks: { color: '#8899b0' }, grid: { display: false } }
                     }
                 }
             });
 
-            // ---- 年度表格 ----
+            // ---- 年度表格（同样直接用 CSV 现成数据） ----
             const tableWrap = document.getElementById('annualTableWrap');
             let tableHtml = `<table>
                 <thead><tr>
@@ -557,21 +508,21 @@
                     <th>夏普比率</th><th>最大回撤</th><th>Calmar</th><th>交易日</th>
                 </tr></thead><tbody>`;
             annual.forEach(row => {
-                const yr = row['年份'];
+                const yr       = row['年份'];
                 const totalRet = row['总收益率'];
-                const annRet = row['年化收益率'];
-                const annVol = row['年化波动率'];
-                const sharpe = row['夏普比率'];
-                const mdd = row['最大回撤'];
-                const calmar = row['Calmar比率'];
-                const days = row['交易日数'];
+                const annRet   = row['年化收益率'];
+                const annVol   = row['年化波动率'];
+                const sharpe   = row['夏普比率'];
+                const mdd      = row['最大回撤'];
+                const calmar   = row['Calmar比率'];
+                const days     = row['交易日数'];
                 tableHtml += `<tr>
                     <td>${yr}</td>
-                    <td class="num ${totalRet >= 0 ? 'pos' : 'neg'}">${(totalRet*100).toFixed(1)}%</td>
-                    <td class="num ${annRet >= 0 ? 'pos' : 'neg'}">${(annRet*100).toFixed(1)}%</td>
-                    <td class="num">${(annVol*100).toFixed(1)}%</td>
+                    <td class="num ${totalRet >= 0 ? 'pos' : 'neg'}">${(totalRet * 100).toFixed(1)}%</td>
+                    <td class="num ${annRet >= 0 ? 'pos' : 'neg'}">${(annRet * 100).toFixed(1)}%</td>
+                    <td class="num">${(annVol * 100).toFixed(1)}%</td>
                     <td class="num">${sharpe.toFixed(2)}</td>
-                    <td class="num neg">${(mdd*100).toFixed(1)}%</td>
+                    <td class="num neg">${(mdd * 100).toFixed(1)}%</td>
                     <td class="num">${calmar.toFixed(2)}</td>
                     <td class="num">${days}</td>
                 </tr>`;
@@ -579,10 +530,10 @@
             tableHtml += '</tbody></table>';
             tableWrap.innerHTML = tableHtml;
 
-            // ---- 持仓图（改进版：仓位百分比 + 目标线 + 再平衡标记）----
+            // ---- 持仓图（仓位百分比 + 目标线 + 再平衡标记） ----
             const holdingDates = holding.map(d => d.date);
 
-            // 计算银行和芯片仓位百分比（基于市值 / 总净值）
+            // 银行和芯片仓位百分比
             const bankPct = holding.map(d => {
                 const total = (d.bank_value || 0) + (d.chip_value || 0) + (d.cash || 0);
                 return total > 0 ? (d.bank_value / total) * 100 : 0;
@@ -592,7 +543,7 @@
                 return total > 0 ? (d.chip_value / total) * 100 : 0;
             });
 
-            // ★ 核心修改：调仓日判断 —— bank_shares 或 chip_shares 发生变化
+            // 调仓日判断：bank_shares 或 chip_shares 发生变化
             const rebalanceDates = [];
             for (let i = 1; i < holding.length; i++) {
                 const prev = holding[i - 1];
