@@ -597,12 +597,12 @@ function renderDashboard(data) {
     /* ---------- KPI 卡片 ---------- */
     const m = calcMetrics(nav);
     const kpiConfig = [
-        { label: '总收益率',    value: m.totalReturn,  fmt: v => fmtPct(v, 1), cls: m.totalReturn >= 0 ? 'positive' : 'negative', sub: `${m.years.toFixed(2)} 年` },
-        { label: '年化收益率',  value: m.annualReturn, fmt: v => fmtPct(v, 1), cls: m.annualReturn >= 0 ? 'positive' : 'negative', sub: '复利年化' },
-        { label: '年化波动率',  value: m.annualVol,    fmt: v => fmtPct(v, 1), cls: 'neutral',  sub: `√${TRADING_DAYS} 年化` },
-        { label: '夏普比率',    value: m.sharpe,       fmt: v => fmtNum(v, 2), cls: m.sharpe >= 0 ? 'positive' : 'negative', sub: `无风险 ${(RISK_FREE * 100).toFixed(1)}%` },
-        { label: '最大回撤',    value: m.maxDD,        fmt: v => fmtPct(v, 1), cls: 'negative', sub: '历史最高点回撤' },
-        { label: 'Calmar比率',  value: m.calmar,       fmt: v => fmtNum(v, 2), cls: m.calmar >= 0 ? 'positive' : 'negative', sub: '年化收益 / |回撤|' },
+        { label: '总收益率',    value: m.totalReturn,  fmt: v => fmtPct(v, 1), cls: m.totalReturn >= 0 ? 'positive' : 'negative' },
+        { label: '年化收益率',  value: m.annualReturn, fmt: v => fmtPct(v, 1), cls: m.annualReturn >= 0 ? 'positive' : 'negative' },
+        { label: '年化波动率',  value: m.annualVol,    fmt: v => fmtPct(v, 1), cls: 'neutral' },
+        { label: '夏普比率',    value: m.sharpe,       fmt: v => fmtNum(v, 2), cls: m.sharpe >= 0 ? 'positive' : 'negative' },
+        { label: '最大回撤',    value: m.maxDD,        fmt: v => fmtPct(v, 1), cls: 'negative' },
+        { label: 'Calmar比率',  value: m.calmar,       fmt: v => fmtNum(v, 2), cls: m.calmar >= 0 ? 'positive' : 'negative' },
     ];
     const kpiGrid = document.getElementById('kpiGrid');
     kpiGrid.innerHTML = '';
