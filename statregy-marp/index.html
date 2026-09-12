@@ -597,12 +597,12 @@ function renderDashboard(data) {
     /* ---------- KPI 卡片 ---------- */
     const m = calcMetrics(nav);
     const kpiConfig = [
-        { label: '总收益率',    value: m.totalReturn,  fmt: v => fmtPct(v, 1) },
-        { label: '年化收益率',  value: m.annualReturn, fmt: v => fmtPct(v, 1) },
-        { label: '年化波动率',  value: m.annualVol,    fmt: v => fmtPct(v, 1) },
-        { label: '夏普比率',    value: m.sharpe,       fmt: v => fmtNum(v, 2) },
-        { label: '最大回撤',    value: m.maxDD,        fmt: v => fmtPct(v, 1) },
-        { label: 'Calmar比率',  value: m.calmar,       fmt: v => fmtNum(v, 2) },
+        { label: '总收益率',   value: m.totalReturn,  fmt: v => (v * 100).toFixed(1) + '%', cls: m.totalReturn >= 0 ? 'positive' : 'negative' },
+        { label: '年化收益率', value: m.annualReturn, fmt: v => (v * 100).toFixed(1) + '%', cls: m.annualReturn >= 0 ? 'positive' : 'negative' },
+        { label: '年化波动率', value: m.annualVol,    fmt: v => (v * 100).toFixed(1) + '%', cls: 'neutral' },
+        { label: '夏普比率',   value: m.sharpe,       fmt: v => v.toFixed(2),               cls: m.sharpe >= 0 ? 'positive' : 'negative' },
+        { label: '最大回撤',   value: m.maxDD,        fmt: v => (v * 100).toFixed(1) + '%', cls: 'negative' },
+        { label: 'Calmar比率', value: m.calmar,       fmt: v => v.toFixed(2),               cls: m.calmar >= 0 ? 'positive' : 'negative' },
     ];
     const kpiGrid = document.getElementById('kpiGrid');
     kpiGrid.innerHTML = '';
@@ -612,7 +612,6 @@ function renderDashboard(data) {
         div.innerHTML = `
             <div class="kpi-label">${item.label}</div>
             <div class="kpi-value ${item.cls}">${item.fmt(item.value)}</div>
-            <div class="kpi-sub">${item.sub}</div>
         `;
         kpiGrid.appendChild(div);
     });
