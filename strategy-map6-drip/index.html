@@ -196,6 +196,27 @@ const FUND_INFO = {
 };
 const BENCH_NAME = "红利低波A (007466.OF)";
 
+// ==================== 图表 Y 轴范围配置 ====================
+// null  = 自动缩放
+// 数字  = 固定范围（单位：%）
+const CHART_Y_CONFIG = {
+  // XIRR 图 Y 轴
+  xirr: {
+    min: null,     // 例如 -20
+    max: null,     // 例如 40
+  },
+  // 历史最大回撤图 Y 轴
+  drawdown: {
+    min: null,     // 例如 -40
+    max: 0,        // 回撤图一般上限就是 0
+  },
+  // 各基金仓位配比图 Y 轴
+  holding: {
+    min: 0,
+    max: 60,
+  },
+};
+
 // ==================== CSV 解析 ====================
 function parseCSV(text) {
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
@@ -208,9 +229,15 @@ function parseCSV(text) {
     if (vals.length < headers.length) continue;
     const row = {};
     headers.forEach((h, idx) => {
-      let v = vals[idx] || '';
-      if (v !== '' && !isNaN(v)) v = parseFloat(v);
-      row[h] = v;
+      const v = vals[idx] != null ? vals[idx].trim() : '';
+      // 空字符串 → null，Chart.js 会断线，而不是画成 0
+      if (v === '') {
+        row[h] = null;
+      } else if (!isNaN(v)) {
+        row[h] = parseFloat(v);
+      } else {
+        row[h] = v;
+      }
     });
     out.push(row);
   }
@@ -339,7 +366,12 @@ function renderNavChart(nav) {
         legend:{ display:false },
         tooltip:{
           mode:'index', intersect:false,
-          callbacks:{ label: c => `${c.dataset.label}: ¥${c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0})}` }
+          callbacks:{
+            label: c => {
+              if (c.parsed.y == null) return `${c.dataset.label}: --`;
+              return `${c.dataset.label}: ¥${c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0})}`;
+            }
+          }
         }
       },
       scales:{
@@ -360,16 +392,24 @@ function renderReturnChart(ts) {
     data:{
       labels: dates,
       datasets: [
-        { label:'策略', data: ts.map(d => d.strategy_return*100), borderColor:'#f0c27f', borderWidth:2, pointRadius:0, tension:0.1 },
-        { label:'基准', data: ts.map(d => d.benchmark_return*100), borderColor:'#4a90d9', borderWidth:1.5, pointRadius:0, tension:0.1, borderDash:[4,4] },
-        { label:'超额', data: ts.map(d => d.excess_return*100), borderColor:'#4cd9a0', borderWidth:1.5, pointRadius:0, tension:0.1 }
+        { label:'策略', data: ts.map(d => d.strategy_return != null ? d.strategy_return*100 : null), borderColor:'#f0c27f', borderWidth:2, pointRadius:0, tension:0.1, spanGaps:true },
+        { label:'基准', data: ts.map(d => d.benchmark_return != null ? d.benchmark_return*100 : null), borderColor:'#4a90d9', borderWidth:1.5, pointRadius:0, tension:0.1, borderDash:[4,4], spanGaps:true },
+        { label:'超额', data: ts.map(d => d.excess_return != null ? d.excess_return*100 : null), borderColor:'#4cd9a0', borderWidth:1.5, pointRadius:0, tension:0.1, spanGaps:true }
       ]
     },
     options:{
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:11} } },
-        tooltip:{ mode:'index', intersect:false, callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } }
+        tooltip:{
+          mode:'index', intersect:false,
+          callbacks:{
+            label: c => {
+              if (c.parsed.y == null) return `${c.dataset.label}: --`;
+              return `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`;
+            }
+          }
+        }
       },
       scales:{
         x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
@@ -399,11 +439,24 @@ function renderXirrChart(ts) {
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:11} } },
-        tooltip:{ mode:'index', intersect:false, callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(2)+'%' : '--'}` } }
+        tooltip:{
+          mode:'index', intersect:false,
+          callbacks:{
+            label: c => {
+              if (c.parsed.y == null) return `${c.dataset.label}: --`;
+              return `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`;
+            }
+          }
+        }
       },
       scales:{
         x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
-        y:{ ticks:{ color:'#8899b0', callback:v => v+'%' }, grid:{ color:'#1a222f' } }
+        y:{
+          min: CHART_Y_CONFIG.xirr.min,
+          max: CHART_Y_CONFIG.xirr.max,
+          ticks:{ color:'#8899b0', callback:v => v+'%' },
+          grid:{ color:'#1a222f' }
+        }
       }
     }
   });
@@ -419,9 +472,9 @@ function renderDrawdownChart(ts) {
     data:{
       labels: dates,
       datasets: [
-        { label:'策略', data: ts.map(d => d.max_drawdown*100),
+        { label:'策略', data: ts.map(d => d.max_drawdown != null ? d.max_drawdown*100 : null),
           borderColor:'#fc6b6b', backgroundColor:'rgba(252,107,107,0.15)',
-          borderWidth:2, pointRadius:0, tension:0.1, fill:true },
+          borderWidth:2, pointRadius:0, tension:0.1, fill:true, spanGaps:true },
         { label:'基准', data: ts.map(d => d.benchmark_drawdown != null ? d.benchmark_drawdown*100 : null),
           borderColor:'#4a90d9', borderWidth:1.5, pointRadius:0, tension:0.1, borderDash:[4,4], spanGaps:true }
       ]
@@ -430,11 +483,24 @@ function renderDrawdownChart(ts) {
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:11} } },
-        tooltip:{ mode:'index', intersect:false, callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } }
+        tooltip:{
+          mode:'index', intersect:false,
+          callbacks:{
+            label: c => {
+              if (c.parsed.y == null) return `${c.dataset.label}: --`;
+              return `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`;
+            }
+          }
+        }
       },
       scales:{
         x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
-        y:{ ticks:{ color:'#8899b0', callback:v => v+'%' }, grid:{ color:'#1a222f' }, max:0 }
+        y:{
+          min: CHART_Y_CONFIG.drawdown.min,
+          max: CHART_Y_CONFIG.drawdown.max,
+          ticks:{ color:'#8899b0', callback:v => v+'%' },
+          grid:{ color:'#1a222f' }
+        }
       }
     }
   });
@@ -451,14 +517,15 @@ function renderHoldingChart(holdings, funds) {
     const info = FUND_INFO[code] || { name: code, color: '#888' };
     // holdings 列可能是权重（0~1）或百分比（0~100），自动判断
     const raw = holdings.map(d => d[code]);
-    const isPct = raw.some(v => v > 1.5);
+    const isPct = raw.some(v => v != null && v > 1.5);
     datasets.push({
       label: info.name,
-      data: raw.map(v => isPct ? v : v * 100),
+      data: raw.map(v => v == null ? null : (isPct ? v : v * 100)),
       borderColor: info.color,
       borderWidth: 1.8,
       pointRadius: 0,
-      tension: 0.15
+      tension: 0.15,
+      spanGaps: true
     });
   });
 
@@ -491,12 +558,24 @@ function renderHoldingChart(holdings, funds) {
       interaction:{ mode:'index', intersect:false },
       plugins:{
         legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:10}, padding:8 } },
-        tooltip:{ callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } }
+        tooltip:{
+          callbacks:{
+            label: c => {
+              if (c.parsed.y == null) return `${c.dataset.label}: --`;
+              return `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%`;
+            }
+          }
+        }
       },
       scales:{
         x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
-        y:{ min:0, max:60, ticks:{ color:'#8899b0', callback:v => v+'%' },
-            grid:{ color:'#1a222f' }, title:{ display:true, text:'仓位占比 (%)', color:'#8899b0' } }
+        y:{
+          min: CHART_Y_CONFIG.holding.min,
+          max: CHART_Y_CONFIG.holding.max,
+          ticks:{ color:'#8899b0', callback:v => v+'%' },
+          grid:{ color:'#1a222f' },
+          title:{ display:true, text:'仓位占比 (%)', color:'#8899b0' }
+        }
       }
     }
   });
@@ -524,7 +603,14 @@ function renderFundChart(funds) {
       responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10 } },
-        tooltip:{ callbacks:{ label: c => `${c.dataset.label}: ¥${c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0})}` } }
+        tooltip:{
+          callbacks:{
+            label: c => {
+              if (c.parsed.y == null) return `${c.dataset.label}: --`;
+              return `${c.dataset.label}: ¥${c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0})}`;
+            }
+          }
+        }
       },
       scales:{
         x:{ ticks:{ color:'#8899b0' }, grid:{ display:false } },
