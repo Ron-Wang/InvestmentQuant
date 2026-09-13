@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>多资产定投 · 再平衡策略看板</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background:#0b0e17; color:#e6edf5; padding:24px; min-height:100vh;
+}
+.container { max-width:1440px; margin:0 auto; }
+
+.loading { text-align:center; padding:80px 20px; color:#5a6a80; font-size:18px; }
+.loading .spinner {
+  display:inline-block; width:40px; height:40px;
+  border:4px solid #1f2a3a; border-top-color:#f0c27f; border-radius:50%;
+  animation:spin .8s linear infinite; margin-bottom:16px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.header {
+  display:flex; justify-content:space-between; align-items:flex-start;
+  flex-wrap:wrap; margin-bottom:28px; padding:20px 24px;
+  background:linear-gradient(145deg, #141b26, #0f1620);
+  border-radius:20px; border:1px solid #26303f;
+}
+.header-left h1 {
+  font-size:24px; font-weight:700;
+  background:linear-gradient(135deg, #f0c27f, #fc5c7d);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  letter-spacing:-0.5px;
+}
+.header-left .subtitle { font-size:13px; color:#8899b0; margin-top:4px; }
+.header-left .subtitle span {
+  display:inline-block; background:#1f2a3a; padding:0 12px;
+  border-radius:12px; margin-right:6px;
+}
+.header-right { text-align:right; font-size:13px; color:#8899b0; }
+.header-right .highlight { color:#f0c27f; }
+
+.kpi-grid {
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+  gap:14px; margin-bottom:28px;
+}
+.kpi-card {
+  background:#141b26; border-radius:14px; padding:14px 16px;
+  border:1px solid #1f2a3a; text-align:center;
+}
+.kpi-label {
+  font-size:11px; text-transform:uppercase; color:#7a8aa0; margin-bottom:4px;
+}
+.kpi-value { font-size:22px; font-weight:700; }
+.kpi-value.positive { color:#4cd9a0; }
+.kpi-value.negative { color:#fc6b6b; }
+.kpi-value.neutral  { color:#f0c27f; }
+
+.chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:28px; }
+.chart-box {
+  background:#141b26; border-radius:16px; padding:18px 18px 10px;
+  border:1px solid #1f2a3a;
+}
+.chart-box.full { grid-column:1 / -1; }
+.chart-box .chart-title {
+  font-size:15px; font-weight:600; color:#c8d8e8; margin-bottom:10px;
+  display:flex; align-items:center; gap:8px;
+}
+.chart-box .chart-title .badge {
+  font-size:10px; background:#1f2a3a; padding:1px 12px;
+  border-radius:12px; color:#8899b0; font-weight:400;
+}
+.chart-wrapper { position:relative; height:260px; }
+.chart-wrapper.tall { height:340px; }
+
+.legend-inline {
+  display:flex; gap:18px; flex-wrap:wrap; margin-top:6px;
+  font-size:12px; color:#8899b0;
+}
+.legend-inline .dot {
+  display:inline-block; width:10px; height:10px;
+  border-radius:3px; margin-right:6px;
+}
+
+.table-wrap { overflow-x:auto; margin-top:6px; }
+.table-wrap table { width:100%; border-collapse:collapse; font-size:13px; }
+.table-wrap th {
+  text-align:left; padding:8px 10px; color:#7a8aa0; font-weight:500;
+  font-size:11px; text-transform:uppercase; border-bottom:1px solid #1f2a3a;
+}
+.table-wrap td {
+  padding:7px 10px; border-bottom:1px solid #1a222f; color:#d0dcec;
+}
+.table-wrap .num { font-family:'JetBrains Mono', monospace; text-align:right; }
+.table-wrap .pos { color:#4cd9a0; }
+.table-wrap .neg { color:#fc6b6b; }
+.table-wrap .code { font-family:'JetBrains Mono', monospace; color:#8899b0; font-size:12px; }
+
+.flex-between { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+.text-muted { color:#5a6a80; font-size:12px; }
+.hidden { display:none !important; }
+
+@media (max-width:900px) {
+  .chart-grid { grid-template-columns:1fr; }
+  .header { flex-direction:column; gap:10px; }
+  .header-right { text-align:left; width:100%; }
+  .kpi-grid { grid-template-columns:repeat(4, 1fr); }
+}
+@media (max-width:600px) {
+  .kpi-grid { grid-template-columns:repeat(2, 1fr); }
+  body { padding:12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <div>正在加载策略数据 ...</div>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <header class="header">
+      <div class="header-left">
+        <h1>💧 多资产定投 · 再平衡策略</h1>
+        <div class="subtitle">
+          <span id="fundCount">-- 只基金</span>
+          <span>📅 每月定投</span>
+          <span id="rebalanceMode">阈值再平衡</span>
+          <span id="dateRange"></span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div>基准：<span class="highlight" id="benchName">--</span></div>
+      </div>
+    </header>
+
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <div class="chart-grid">
+      <div class="chart-box full">
+        <div class="chart-title">📈 组合总市值 vs 累计本金 <span class="badge">含基准对比</span></div>
+        <div class="chart-wrapper tall"><canvas id="navChart"></canvas></div>
+        <div class="legend-inline" id="navLegend"></div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-box">
+        <div class="chart-title">📊 总收益率</div>
+        <div class="chart-wrapper"><canvas id="returnChart"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">💹 XIRR 年化内部收益率</div>
+        <div class="chart-wrapper"><canvas id="xirrChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-box">
+        <div class="chart-title">📉 历史最大回撤</div>
+        <div class="chart-wrapper"><canvas id="ddChart"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">🧩 各基金仓位配比 <span class="badge">虚线 = 目标权重</span></div>
+        <div class="chart-wrapper"><canvas id="holdingChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="chart-box full" style="margin-bottom:28px;">
+      <div class="chart-title">💰 各基金贡献（累计投入 vs 期末市值）</div>
+      <div class="chart-wrapper"><canvas id="fundChart"></canvas></div>
+    </div>
+
+    <div class="chart-box full">
+      <div class="flex-between">
+        <div class="chart-title">📋 各基金业绩汇总</div>
+        <span class="text-muted">按目标权重排序</span>
+      </div>
+      <div class="table-wrap" id="fundTableWrap"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== 基金元信息（可自行调整） ====================
+const FUND_INFO = {
+  "240019.OF": { name: "银行ETF联接",   color: "#4a90d9" },
+  "017469.OF": { name: "科创芯片联接",  color: "#fc5c7d" },
+  "539001.OF": { name: "纳指100A",      color: "#4cd9a0" },
+  "011613.OF": { name: "科创50联接",    color: "#f0c27f" },
+  "007466.OF": { name: "红利低波A",     color: "#a78bfa" },
+  "000217.OF": { name: "黄金ETF联接",   color: "#f5a623" },
+};
+const BENCH_NAME = "红利低波A (007466.OF)";
+
+// ==================== CSV 解析 ====================
+function parseCSV(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+  if (!lines.length) return [];
+  const headers = lines[0].split(',').map(h => h.trim());
+  const out = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(',').map(v => v.trim());
+    if (vals.length < headers.length) continue;
+    const row = {};
+    headers.forEach((h, idx) => {
+      let v = vals[idx] || '';
+      if (v !== '' && !isNaN(v)) v = parseFloat(v);
+      row[h] = v;
+    });
+    out.push(row);
+  }
+  return out;
+}
+
+// ==================== 文件加载 ====================
+const FILES = ['nav.csv', 'metrics.csv', 'timeseries.csv', 'holdings.csv', 'funds.csv'];
+const loaded = {};
+
+Promise.all(FILES.map(f =>
+  fetch(f).then(res => {
+    if (!res.ok) throw new Error(`HTTP ${res.status} — ${f}`);
+    return res.text();
+  }).then(text => { loaded[f.replace('.csv','')] = parseCSV(text); })
+)).then(() => {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+  renderDashboard(loaded);
+}).catch(err => {
+  document.getElementById('loading').innerHTML = `
+    <div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>
+    <div style="color:#8899b0;margin-top:12px;">${err.message}</div>
+    <div style="color:#5a6a80;margin-top:8px;font-size:14px;">
+      请确保以下 CSV 与页面同目录：<br>nav.csv · metrics.csv · timeseries.csv · holdings.csv · funds.csv
+    </div>`;
+  console.error(err);
+});
+
+// ==================== 渲染主入口 ====================
+function renderDashboard(data) {
+  const { nav, metrics, timeseries, holdings, funds } = data;
+  if (!nav || !nav.length || !metrics || !metrics.length) {
+    alert('关键数据为空，请检查 CSV');
+    return;
+  }
+
+  // ---- Header ----
+  document.getElementById('dateRange').textContent =
+    `${nav[0].date}  ~  ${nav[nav.length-1].date}`;
+  document.getElementById('benchName').textContent = BENCH_NAME;
+  if (funds && funds.length) {
+    document.getElementById('fundCount').textContent = `${funds.length} 只基金`;
+  }
+
+  renderKPI(metrics, nav);
+  renderNavChart(nav);
+  renderReturnChart(timeseries);
+  renderXirrChart(timeseries);
+  renderDrawdownChart(timeseries);
+  renderHoldingChart(holdings, funds);
+  renderFundChart(funds);
+  renderFundTable(funds);
+}
+
+// ==================== KPI 卡片 ====================
+function renderKPI(metrics, nav) {
+  const m = {};
+  metrics.forEach(r => { m[r['指标']] = r['数值']; });
+
+  const lastNav = nav[nav.length - 1];
+  const principal = lastNav.principal;
+  const finalValue = lastNav.strategy_value;
+
+  const kpiConfig = [
+    { label:'总收益率',   value:m['策略组合_总收益率'],     fmt:v=>(v*100).toFixed(2)+'%', sign:true },
+    { label:'年化收益率', value:m['策略组合_年化收益率'],   fmt:v=>(v*100).toFixed(2)+'%', sign:true },
+    { label:'XIRR',       value:m['策略组合_XIRR'],         fmt:v=>(v*100).toFixed(2)+'%', sign:true },
+    { label:'最大回撤',   value:m['策略组合_历史最大回撤'], fmt:v=>(v*100).toFixed(2)+'%', neg:true },
+    { label:'累计本金',   value:principal,                   fmt:v=>'¥'+v.toLocaleString(undefined,{maximumFractionDigits:0}) },
+    { label:'期末市值',   value:finalValue,                  fmt:v=>'¥'+v.toLocaleString(undefined,{maximumFractionDigits:0}) },
+    { label:'超额收益率', value:m['超额总收益率'],           fmt:v=>(v*100).toFixed(2)+'%', sign:true },
+    { label:'定投次数',   value:nav.filter(r => r.principal > 0).length, fmt:v=>v+' 次' },
+  ];
+
+  const grid = document.getElementById('kpiGrid');
+  grid.innerHTML = '';
+  kpiConfig.forEach(item => {
+    let cls = 'neutral';
+    if (item.value !== undefined && item.value !== null) {
+      if (item.neg) cls = item.value < 0 ? 'negative' : 'positive';
+      else if (item.sign) cls = item.value >= 0 ? 'positive' : 'negative';
+    }
+    const div = document.createElement('div');
+    div.className = 'kpi-card';
+    div.innerHTML = `
+      <div class="kpi-label">${item.label}</div>
+      <div class="kpi-value ${cls}">${item.value != null ? item.fmt(item.value) : '--'}</div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+// ==================== ① 净值曲线 ====================
+function renderNavChart(nav) {
+  const dates     = nav.map(d => d.date);
+  const strategy  = nav.map(d => d.strategy_value);
+  const principal = nav.map(d => d.principal);
+  const benchmark = nav.map(d => d.benchmark_value);
+
+  const legend = document.getElementById('navLegend');
+  legend.innerHTML = `
+    <span><span class="dot" style="background:#f0c27f;"></span>策略总市值</span>
+    <span><span class="dot" style="background:#4a90d9;"></span>基准总市值</span>
+    <span><span class="dot" style="background:#5a6a80;"></span>累计本金</span>`;
+
+  const ctx = document.getElementById('navChart').getContext('2d');
+  if (window._navChart) window._navChart.destroy();
+  window._navChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        { label:'策略总市值', data:strategy, borderColor:'#f0c27f',
+          backgroundColor:'rgba(240,194,127,0.08)', borderWidth:2.5,
+          pointRadius:0, tension:0.1, fill:true },
+        { label:'基准总市值', data:benchmark, borderColor:'#4a90d9',
+          borderWidth:1.5, pointRadius:0, tension:0.1, borderDash:[4,4] },
+        { label:'累计本金',   data:principal, borderColor:'#5a6a80',
+          borderWidth:1.5, pointRadius:0, tension:0, borderDash:[6,4] }
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:false },
+        tooltip:{
+          mode:'index', intersect:false,
+          callbacks:{ label: c => `${c.dataset.label}: ¥${c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0})}` }
+        }
+      },
+      scales:{
+        x:{ ticks:{ maxTicksLimit:20, color:'#8899b0' }, grid:{ color:'#1a222f' } },
+        y:{ ticks:{ color:'#8899b0', callback:v => '¥'+(v/1000).toFixed(0)+'k' }, grid:{ color:'#1a222f' } }
+      }
+    }
+  });
+}
+
+// ==================== ② 总收益率曲线 ====================
+function renderReturnChart(ts) {
+  const dates = ts.map(d => d.date);
+  const ctx = document.getElementById('returnChart').getContext('2d');
+  if (window._retChart) window._retChart.destroy();
+  window._retChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: dates,
+      datasets: [
+        { label:'策略', data: ts.map(d => d.strategy_return*100), borderColor:'#f0c27f', borderWidth:2, pointRadius:0, tension:0.1 },
+        { label:'基准', data: ts.map(d => d.benchmark_return*100), borderColor:'#4a90d9', borderWidth:1.5, pointRadius:0, tension:0.1, borderDash:[4,4] },
+        { label:'超额', data: ts.map(d => d.excess_return*100), borderColor:'#4cd9a0', borderWidth:1.5, pointRadius:0, tension:0.1 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:11} } },
+        tooltip:{ mode:'index', intersect:false, callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } }
+      },
+      scales:{
+        x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
+        y:{ ticks:{ color:'#8899b0', callback:v => v+'%' }, grid:{ color:'#1a222f' } }
+      }
+    }
+  });
+}
+
+// ==================== ③ XIRR 曲线 ====================
+function renderXirrChart(ts) {
+  const dates = ts.map(d => d.date);
+  const ctx = document.getElementById('xirrChart').getContext('2d');
+  if (window._xirrChart) window._xirrChart.destroy();
+  window._xirrChart = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: dates,
+      datasets: [
+        { label:'策略XIRR', data: ts.map(d => d.xirr != null ? d.xirr*100 : null),
+          borderColor:'#f0c27f', borderWidth:2, pointRadius:0, tension:0.1, spanGaps:true },
+        { label:'基准XIRR', data: ts.map(d => d.benchmark_xirr != null ? d.benchmark_xirr*100 : null),
+          borderColor:'#4a90d9', borderWidth:1.5, pointRadius:0, tension:0.1, borderDash:[4,4], spanGaps:true }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:11} } },
+        tooltip:{ mode:'index', intersect:false, callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y != null ? c.parsed.y.toFixed(2)+'%' : '--'}` } }
+      },
+      scales:{
+        x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
+        y:{ ticks:{ color:'#8899b0', callback:v => v+'%' }, grid:{ color:'#1a222f' } }
+      }
+    }
+  });
+}
+
+// ==================== ④ 历史最大回撤 ====================
+function renderDrawdownChart(ts) {
+  const dates = ts.map(d => d.date);
+  const ctx = document.getElementById('ddChart').getContext('2d');
+  if (window._ddChart2) window._ddChart2.destroy();
+  window._ddChart2 = new Chart(ctx, {
+    type:'line',
+    data:{
+      labels: dates,
+      datasets: [
+        { label:'策略', data: ts.map(d => d.max_drawdown*100),
+          borderColor:'#fc6b6b', backgroundColor:'rgba(252,107,107,0.15)',
+          borderWidth:2, pointRadius:0, tension:0.1, fill:true },
+        { label:'基准', data: ts.map(d => d.benchmark_drawdown != null ? d.benchmark_drawdown*100 : null),
+          borderColor:'#4a90d9', borderWidth:1.5, pointRadius:0, tension:0.1, borderDash:[4,4], spanGaps:true }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:11} } },
+        tooltip:{ mode:'index', intersect:false, callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } }
+      },
+      scales:{
+        x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
+        y:{ ticks:{ color:'#8899b0', callback:v => v+'%' }, grid:{ color:'#1a222f' }, max:0 }
+      }
+    }
+  });
+}
+
+// ==================== ⑤ 各基金仓位配比 ====================
+function renderHoldingChart(holdings, funds) {
+  if (!holdings || !holdings.length) return;
+  const dates = holdings.map(d => d.date);
+  const codes = Object.keys(FUND_INFO).filter(c => c in holdings[0]);
+
+  const datasets = [];
+  codes.forEach(code => {
+    const info = FUND_INFO[code] || { name: code, color: '#888' };
+    // holdings 列可能是权重（0~1）或百分比（0~100），自动判断
+    const raw = holdings.map(d => d[code]);
+    const isPct = raw.some(v => v > 1.5);
+    datasets.push({
+      label: info.name,
+      data: raw.map(v => isPct ? v : v * 100),
+      borderColor: info.color,
+      borderWidth: 1.8,
+      pointRadius: 0,
+      tension: 0.15
+    });
+  });
+
+  // 目标权重虚线（从 funds.csv 读目标权重）
+  if (funds && funds.length) {
+    funds.forEach(f => {
+      const code = f.code;
+      const info = FUND_INFO[code];
+      if (!info) return;
+      const targetPct = f.target_weight * 100;
+      datasets.push({
+        label: `${info.name} 目标`,
+        data: dates.map(() => targetPct),
+        borderColor: info.color,
+        borderWidth: 1,
+        borderDash: [6, 4],
+        pointRadius: 0,
+        opacity: 0.5
+      });
+    });
+  }
+
+  const ctx = document.getElementById('holdingChart').getContext('2d');
+  if (window._holdChart) window._holdChart.destroy();
+  window._holdChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels: dates, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      interaction:{ mode:'index', intersect:false },
+      plugins:{
+        legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10, font:{size:10}, padding:8 } },
+        tooltip:{ callbacks:{ label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(2)}%` } }
+      },
+      scales:{
+        x:{ ticks:{ maxTicksLimit:10, color:'#8899b0' }, grid:{ color:'#1a222f' } },
+        y:{ min:0, max:60, ticks:{ color:'#8899b0', callback:v => v+'%' },
+            grid:{ color:'#1a222f' }, title:{ display:true, text:'仓位占比 (%)', color:'#8899b0' } }
+      }
+    }
+  });
+}
+
+// ==================== ⑥ 各基金贡献柱状图 ====================
+function renderFundChart(funds) {
+  if (!funds || !funds.length) return;
+  const labels = funds.map(f => (FUND_INFO[f.code]?.name) || f.code);
+  const invested = funds.map(f => f.total_invested);
+  const finalVal = funds.map(f => f.final_value);
+
+  const ctx = document.getElementById('fundChart').getContext('2d');
+  if (window._fundChart) window._fundChart.destroy();
+  window._fundChart = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        { label:'累计投入', data:invested, backgroundColor:'rgba(74,144,217,0.6)', borderColor:'#4a90d9', borderWidth:1.5 },
+        { label:'期末市值', data:finalVal, backgroundColor:'rgba(240,194,127,0.7)', borderColor:'#f0c27f', borderWidth:1.5 }
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ display:true, labels:{ color:'#8899b0', boxWidth:10 } },
+        tooltip:{ callbacks:{ label: c => `${c.dataset.label}: ¥${c.parsed.y.toLocaleString(undefined,{maximumFractionDigits:0})}` } }
+      },
+      scales:{
+        x:{ ticks:{ color:'#8899b0' }, grid:{ display:false } },
+        y:{ ticks:{ color:'#8899b0', callback:v => '¥'+(v/1000).toFixed(0)+'k' }, grid:{ color:'#1a222f' } }
+      }
+    }
+  });
+}
+
+// ==================== ⑦ 各基金汇总表 ====================
+function renderFundTable(funds) {
+  if (!funds || !funds.length) return;
+  const wrap = document.getElementById('fundTableWrap');
+  let html = `<table>
+    <thead><tr>
+      <th>代码</th><th>名称</th><th>目标权重</th>
+      <th class="num">累计投入</th><th class="num">期末市值</th>
+      <th class="num">收益率</th><th class="num">占组合</th>
+    </tr></thead><tbody>`;
+  const totalFinal = funds.reduce((s, f) => s + (f.final_value || 0), 0);
+  funds.forEach(f => {
+    const info = FUND_INFO[f.code] || { name: f.code };
+    const ret = f.return_rate != null ? f.return_rate : (f.final_value / f.total_invested - 1);
+    const weightPct = totalFinal > 0 ? (f.final_value / totalFinal) * 100 : 0;
+    html += `<tr>
+      <td class="code">${f.code}</td>
+      <td>${info.name}</td>
+      <td class="num">${(f.target_weight*100).toFixed(1)}%</td>
+      <td class="num">¥${f.total_invested.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+      <td class="num">¥${f.final_value.toLocaleString(undefined,{maximumFractionDigits:0})}</td>
+      <td class="num ${ret >= 0 ? 'pos' : 'neg'}">${(ret*100).toFixed(2)}%</td>
+      <td class="num">${weightPct.toFixed(1)}%</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+</script>
+
+</body>
+</html>
