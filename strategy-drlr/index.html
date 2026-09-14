@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高股息质量龙头轮动策略 · 季度调仓</title>
+    <title>DRLR 高股息质量龙头轮动策略 · 季度调仓</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -157,10 +157,11 @@
     <div id="dashboard" class="hidden">
         <header class="header">
             <div class="header-left">
-                <h1>💎 高股息质量龙头轮动策略</h1>
+                <h1>💎 DRLR 高股息质量龙头轮动策略</h1>
                 <div class="subtitle">
                     <span>Dividend × ROE</span>
                     <span>📅 季度调仓</span>
+                    <span>🏭 行业上限 2 只</span>
                     <span id="dateRange"></span>
                 </div>
             </div>
@@ -206,6 +207,17 @@
             <div class="table-wrap" id="annualTableWrap"></div>
         </div>
 
+        <!-- ★ 每日持仓明细（移到因子之前） -->
+        <div class="chart-box full" style="margin-bottom:28px;">
+            <div class="chart-title">
+                🧩 每日持仓明细（股票 + 现金，单位：元）
+                <span class="badge">竖线 = 季度调仓</span>
+            </div>
+            <div class="chart-wrapper tall"><canvas id="holdingChart"></canvas></div>
+            <div class="hold-legend" id="holdingLegend"></div>
+            <div class="debug-bar" id="holdingDebug"></div>
+        </div>
+
         <!-- 最新因子快照 + 横截面 -->
         <div class="chart-grid">
             <div class="chart-box">
@@ -235,17 +247,6 @@
             <div class="chart-wrapper tall"><canvas id="factorTsChart"></canvas></div>
             <div class="hold-legend" id="factorLegend"></div>
         </div>
-
-        <!-- 每日持仓明细 -->
-        <div class="chart-box full">
-            <div class="chart-title">
-                🧩 每日持仓明细（股票 + 现金，单位：元）
-                <span class="badge">竖线 = 季度调仓</span>
-            </div>
-            <div class="chart-wrapper tall"><canvas id="holdingChart"></canvas></div>
-            <div class="hold-legend" id="holdingLegend"></div>
-            <div class="debug-bar" id="holdingDebug"></div>
-        </div>
     </div>
 </div>
 
@@ -255,11 +256,8 @@
     // ============================================================
     function padCode(code) {
         if (code === undefined || code === null || code === '') return '';
-        // 去掉可能的 .SH/.SZ 后缀或小数点
         let s = String(code).trim();
-        // 若含有 '.0'（被 parseFloat 转成 2532.0），先去掉
         s = s.replace(/\.0+$/, '');
-        // 只保留数字部分
         s = s.replace(/[^0-9]/g, '');
         return s.padStart(6, '0');
     }
@@ -273,7 +271,6 @@
         if (lines.length === 0) return [];
         const headers = lines[0].split(',').map(h => h.trim());
 
-        // 需要保持字符串的列（股票代码、日期等）
         const stringCols = new Set(['stock_code', 'code', 'date', 'name', 'industry']);
 
         const data = [];
@@ -283,15 +280,10 @@
             const row = {};
             headers.forEach((h, idx) => {
                 let val = values[idx] || '';
-
                 if (stringCols.has(h)) {
-                    // 字符串列：保持原样
                     row[h] = val;
                 } else {
-                    // 数值列：尝试转数字
-                    if (!isNaN(val) && val !== '') {
-                        val = parseFloat(val);
-                    }
+                    if (!isNaN(val) && val !== '') val = parseFloat(val);
                     row[h] = val;
                 }
             });
@@ -340,24 +332,18 @@
         console.error(err);
     });
 
-    // ============================================================
-    // HSL 颜色生成
-    // ============================================================
     function hslColor(i, total, alpha = 0.85) {
         const hue = Math.round((i * 360) / Math.max(total, 1));
         return `hsla(${hue}, 65%, 60%, ${alpha})`;
     }
 
-    // ============================================================
-    // 格式化
-    // ============================================================
     function fmtNum(v, digits = 4) {
         if (v === undefined || v === null || isNaN(v)) return '--';
         return Number(v).toFixed(digits);
     }
 
     // ============================================================
-    // 渲染看板
+    // 渲染
     // ============================================================
     function renderDashboard(data) {
         const metrics       = data['DRLR_metrics'];
@@ -372,7 +358,6 @@
             return;
         }
 
-        // ---- 日期范围 ----
         const first = nav[0].date;
         const last  = nav[nav.length - 1].date;
         document.getElementById('dateRange').textContent = `${first}  ~  ${last}`;
@@ -579,6 +564,154 @@
         });
         tableHtml += '</tbody></table>';
         tableWrap.innerHTML = tableHtml;
+
+        // =====================================================
+        // ★ 每日持仓明细（现在在因子之前渲染）
+        // =====================================================
+        const debugBar = document.getElementById('holdingDebug');
+        if (!holding || !holding.length) {
+            debugBar.textContent = '⚠️ DRLR_holding.csv 没有数据';
+        } else {
+            const holdingDates = holding.map(d => d.date);
+
+            const allStockCols = Object.keys(holding[0]).filter(k => k.includes('|'));
+            const activeStocks = allStockCols.filter(col =>
+                holding.some(h => (h[col] || 0) > 1)
+            );
+
+            debugBar.textContent =
+                `调仓日 ${rebalanceDates.length} 个 · 历史出现过的股票 ${activeStocks.length} 只 · ` +
+                `总交易日 ${holding.length} 天`;
+
+            const stockColors = {};
+            activeStocks.forEach((col, i) => {
+                stockColors[col] = hslColor(i, activeStocks.length, 0.85);
+            });
+
+            const STACK_ID = 'portfolio';
+            const datasets = [];
+
+            datasets.push({
+                label: '现金',
+                data: holding.map(h => h.cash || 0),
+                backgroundColor: 'rgba(136,153,176,0.55)',
+                borderColor: 'rgba(136,153,176,0.9)',
+                borderWidth: 0,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                tension: 0.1,
+                fill: true,
+                stack: STACK_ID,
+                order: 999
+            });
+
+            activeStocks.forEach(col => {
+                const name = col.includes('|') ? col.split('|')[1] : col;
+                datasets.push({
+                    label: name || col,
+                    data: holding.map(h => h[col] || 0),
+                    backgroundColor: stockColors[col],
+                    borderColor: stockColors[col],
+                    borderWidth: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    tension: 0.1,
+                    fill: true,
+                    stack: STACK_ID,
+                    order: 1
+                });
+            });
+
+            const rebalanceLinesPlugin = {
+                id: 'rebalanceLines',
+                afterDatasetsDraw(chart) {
+                    const { ctx, chartArea, scales } = chart;
+                    if (!rebalanceDates.length || !chartArea) return;
+                    const xScale = scales.x;
+                    ctx.save();
+                    ctx.strokeStyle = 'rgba(240, 194, 127, 0.35)';
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([3, 3]);
+                    rebalanceDates.forEach(date => {
+                        const idx = holdingDates.indexOf(date);
+                        if (idx === -1) return;
+                        const x = xScale.getPixelForValue(idx);
+                        if (x < chartArea.left || x > chartArea.right) return;
+                        ctx.beginPath();
+                        ctx.moveTo(x, chartArea.top);
+                        ctx.lineTo(x, chartArea.bottom);
+                        ctx.stroke();
+                    });
+                    ctx.restore();
+                }
+            };
+
+            const holdCtx = document.getElementById('holdingChart').getContext('2d');
+            if (window._holdChart) window._holdChart.destroy();
+            window._holdChart = new Chart(holdCtx, {
+                type: 'line',
+                data: { labels: holdingDates, datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const label = ctx.dataset.label || '';
+                                    const val = ctx.parsed.y || 0;
+                                    if (val < 1) return null;
+                                    return `${label}: ${(val / 10000).toFixed(2)} 万`;
+                                }
+                            },
+                            filter: function(item) {
+                                return (item.parsed.y || 0) > 1;
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            ticks: { maxTicksLimit: 20, color: '#8899b0' },
+                            grid: { color: '#1a222f' }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#8899b0',
+                                callback: v => (v / 10000).toFixed(0) + '万'
+                            },
+                            grid: { color: '#1a222f' },
+                            title: { display: true, text: '市值（元）', color: '#8899b0' }
+                        }
+                    }
+                },
+                plugins: [rebalanceLinesPlugin]
+            });
+
+            const legendWrap = document.getElementById('holdingLegend');
+            legendWrap.innerHTML = '';
+
+            const cashItem = document.createElement('span');
+            cashItem.className = 'lg-item';
+            cashItem.innerHTML = `<span class="swatch" style="background:rgba(136,153,176,0.9);"></span>现金`;
+            legendWrap.appendChild(cashItem);
+
+            activeStocks.forEach(col => {
+                const name = col.includes('|') ? col.split('|')[1] : col;
+                const item = document.createElement('span');
+                item.className = 'lg-item';
+                item.innerHTML = `
+                    <span class="swatch" style="background:${stockColors[col]};"></span>
+                    ${name || col}
+                `;
+                legendWrap.appendChild(item);
+            });
+        }
 
         // =====================================================
         // 最新因子快照 表
@@ -794,155 +927,6 @@
             document.getElementById('factorTsChart').parentElement.innerHTML =
                 `<div class="text-muted" style="padding:20px;">未加载到 DRLR_factor_history.csv</div>`;
         }
-
-        // =====================================================
-        // 每日持仓明细
-        // =====================================================
-        const debugBar = document.getElementById('holdingDebug');
-        if (!holding || !holding.length) {
-            debugBar.textContent = '⚠️ DRLR_holding.csv 没有数据';
-            return;
-        }
-
-        const holdingDates = holding.map(d => d.date);
-
-        const allStockCols = Object.keys(holding[0]).filter(k => k.includes('|'));
-        const activeStocks = allStockCols.filter(col =>
-            holding.some(h => (h[col] || 0) > 1)
-        );
-
-        debugBar.textContent =
-            `调仓日 ${rebalanceDates.length} 个 · 历史出现过的股票 ${activeStocks.length} 只 · ` +
-            `总交易日 ${holding.length} 天`;
-
-        const stockColors = {};
-        activeStocks.forEach((col, i) => {
-            stockColors[col] = hslColor(i, activeStocks.length, 0.85);
-        });
-
-        const STACK_ID = 'portfolio';
-        const datasets = [];
-
-        datasets.push({
-            label: '现金',
-            data: holding.map(h => h.cash || 0),
-            backgroundColor: 'rgba(136,153,176,0.55)',
-            borderColor: 'rgba(136,153,176,0.9)',
-            borderWidth: 0,
-            pointRadius: 0,
-            pointHoverRadius: 0,
-            tension: 0.1,
-            fill: true,
-            stack: STACK_ID,
-            order: 999
-        });
-
-        activeStocks.forEach(col => {
-            const name = col.includes('|') ? col.split('|')[1] : col;
-            datasets.push({
-                label: name || col,
-                data: holding.map(h => h[col] || 0),
-                backgroundColor: stockColors[col],
-                borderColor: stockColors[col],
-                borderWidth: 0,
-                pointRadius: 0,
-                pointHoverRadius: 0,
-                tension: 0.1,
-                fill: true,
-                stack: STACK_ID,
-                order: 1
-            });
-        });
-
-        const rebalanceLinesPlugin = {
-            id: 'rebalanceLines',
-            afterDatasetsDraw(chart) {
-                const { ctx, chartArea, scales } = chart;
-                if (!rebalanceDates.length || !chartArea) return;
-                const xScale = scales.x;
-                ctx.save();
-                ctx.strokeStyle = 'rgba(240, 194, 127, 0.35)';
-                ctx.lineWidth = 1;
-                ctx.setLineDash([3, 3]);
-                rebalanceDates.forEach(date => {
-                    const idx = holdingDates.indexOf(date);
-                    if (idx === -1) return;
-                    const x = xScale.getPixelForValue(idx);
-                    if (x < chartArea.left || x > chartArea.right) return;
-                    ctx.beginPath();
-                    ctx.moveTo(x, chartArea.top);
-                    ctx.lineTo(x, chartArea.bottom);
-                    ctx.stroke();
-                });
-                ctx.restore();
-            }
-        };
-
-        const holdCtx = document.getElementById('holdingChart').getContext('2d');
-        if (window._holdChart) window._holdChart.destroy();
-        window._holdChart = new Chart(holdCtx, {
-            type: 'line',
-            data: { labels: holdingDates, datasets },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: false,
-                interaction: { mode: 'index', intersect: false },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(ctx) {
-                                const label = ctx.dataset.label || '';
-                                const val = ctx.parsed.y || 0;
-                                if (val < 1) return null;
-                                return `${label}: ${(val / 10000).toFixed(2)} 万`;
-                            }
-                        },
-                        filter: function(item) {
-                            return (item.parsed.y || 0) > 1;
-                        }
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: true,
-                        ticks: { maxTicksLimit: 20, color: '#8899b0' },
-                        grid: { color: '#1a222f' }
-                    },
-                    y: {
-                        stacked: true,
-                        beginAtZero: true,
-                        ticks: {
-                            color: '#8899b0',
-                            callback: v => (v / 10000).toFixed(0) + '万'
-                        },
-                        grid: { color: '#1a222f' },
-                        title: { display: true, text: '市值（元）', color: '#8899b0' }
-                    }
-                }
-            },
-            plugins: [rebalanceLinesPlugin]
-        });
-
-        const legendWrap = document.getElementById('holdingLegend');
-        legendWrap.innerHTML = '';
-
-        const cashItem = document.createElement('span');
-        cashItem.className = 'lg-item';
-        cashItem.innerHTML = `<span class="swatch" style="background:rgba(136,153,176,0.9);"></span>现金`;
-        legendWrap.appendChild(cashItem);
-
-        activeStocks.forEach(col => {
-            const name = col.includes('|') ? col.split('|')[1] : col;
-            const item = document.createElement('span');
-            item.className = 'lg-item';
-            item.innerHTML = `
-                <span class="swatch" style="background:${stockColors[col]};"></span>
-                ${name || col}
-            `;
-            legendWrap.appendChild(item);
-        });
     }
 </script>
 
