@@ -13,7 +13,6 @@
         }
         .container { max-width: 1440px; margin: 0 auto; }
 
-        /* 加载状态 */
         .loading { text-align: center; padding: 80px 20px; color: #5a6a80; font-size: 18px; }
         .loading .spinner {
             display: inline-block; width: 40px; height: 40px;
@@ -22,7 +21,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* 页头 */
         .header {
             display: flex; justify-content: space-between; align-items: flex-start;
             flex-wrap: wrap; margin-bottom: 28px; padding: 20px 24px;
@@ -43,7 +41,6 @@
         .header-right { text-align: right; font-size: 13px; color: #8899b0; }
         .header-right .highlight { color: #f0c27f; }
 
-        /* KPI 卡片 */
         .kpi-grid {
             display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
             gap: 14px; margin-bottom: 28px;
@@ -58,7 +55,6 @@
         .kpi-value.negative { color: #fc6b6b; }
         .kpi-value.neutral  { color: #f0c27f; }
 
-        /* 图表容器 */
         .chart-grid {
             display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px;
         }
@@ -76,14 +72,15 @@
             border-radius: 12px; color: #8899b0; font-weight: 400;
         }
         .chart-wrapper { position: relative; height: 260px; }
-        .chart-wrapper.tall { height: 400px; }
+        .chart-wrapper.tall { height: 420px; }
+        .chart-wrapper.mid  { height: 360px; }
 
-        /* 表格 */
         .table-wrap { overflow-x: auto; margin-top: 6px; }
         .table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .table-wrap th {
             text-align: left; padding: 8px 10px; color: #7a8aa0; font-weight: 500;
             font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #1f2a3a;
+            position: sticky; top: 0; background: #141b26;
         }
         .table-wrap td {
             padding: 7px 10px; border-bottom: 1px solid #1a222f; color: #d0dcec;
@@ -91,8 +88,10 @@
         .table-wrap .num { font-family: 'JetBrains Mono', monospace; text-align: right; }
         .table-wrap .pos { color: #4cd9a0; }
         .table-wrap .neg { color: #fc6b6b; }
+        .table-wrap tr.selected-row { background: rgba(240,194,127,0.06); }
+        .table-wrap tr:hover { background: rgba(255,255,255,0.03); }
+        .table-wrap .star { color: #fc5c7d; font-weight: 700; }
 
-        /* 内联图例 */
         .legend-inline {
             display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px;
             font-size: 12px; color: #8899b0;
@@ -102,7 +101,6 @@
             border-radius: 3px; margin-right: 6px;
         }
 
-        /* 持仓图例（自动生成） */
         .hold-legend {
             display: flex; flex-wrap: wrap; gap: 8px 16px;
             margin-top: 12px; font-size: 12px; color: #b8c9dd;
@@ -123,6 +121,19 @@
         }
         .hidden { display: none !important; }
 
+        .debug-bar {
+            margin-top: 8px; padding: 8px 12px;
+            background: #0f1620; border: 1px dashed #26303f;
+            border-radius: 8px; font-size: 11px; color: #5a6a80;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* 因子快照表专用 */
+        .factor-table-wrap {
+            max-height: 520px; overflow-y: auto;
+            border-radius: 10px; border: 1px solid #1f2a3a;
+        }
+
         @media (max-width: 900px) {
             .chart-grid { grid-template-columns: 1fr; }
             .header { flex-direction: column; gap: 10px; }
@@ -138,13 +149,11 @@
 <body>
 
 <div class="container">
-    <!-- 加载提示 -->
     <div id="loading" class="loading">
         <div class="spinner"></div>
         <div>正在加载 DRLR 策略数据 ...</div>
     </div>
 
-    <!-- 看板 -->
     <div id="dashboard" class="hidden">
         <header class="header">
             <div class="header-left">
@@ -157,10 +166,10 @@
             </div>
             <div class="header-right">
                 <div>因子：<span class="highlight">股息率 × ROE</span> · 等权配置 Top 4</div>
+                <div id="latestFactorDate" style="margin-top:4px;"></div>
             </div>
         </header>
 
-        <!-- KPI -->
         <div class="kpi-grid" id="kpiGrid"></div>
 
         <!-- 净值曲线 -->
@@ -197,7 +206,37 @@
             <div class="table-wrap" id="annualTableWrap"></div>
         </div>
 
-        <!-- 每日持仓明细（每只股票 + 现金） -->
+        <!-- ★ 最新因子快照 -->
+        <div class="chart-grid">
+            <div class="chart-box">
+                <div class="chart-title">
+                    📌 最新因子快照
+                    <span class="badge">红 = 本期入选</span>
+                </div>
+                <div class="factor-table-wrap">
+                    <div class="table-wrap" id="factorLatestTableWrap"></div>
+                </div>
+            </div>
+            <div class="chart-box">
+                <div class="chart-title">
+                    🎯 最新因子横截面
+                    <span class="badge">红=入选 蓝=未入选</span>
+                </div>
+                <div class="chart-wrapper mid"><canvas id="factorBarChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- ★ 因子时序 -->
+        <div class="chart-box full" style="margin-bottom:28px;">
+            <div class="chart-title">
+                ⏱️ 因子时序（dividend_yield × roe）
+                <span class="badge">每只股票一条线</span>
+            </div>
+            <div class="chart-wrapper tall"><canvas id="factorTsChart"></canvas></div>
+            <div class="hold-legend" id="factorLegend"></div>
+        </div>
+
+        <!-- 每日持仓明细 -->
         <div class="chart-box full">
             <div class="chart-title">
                 🧩 每日持仓明细（股票 + 现金，单位：元）
@@ -205,6 +244,7 @@
             </div>
             <div class="chart-wrapper tall"><canvas id="holdingChart"></canvas></div>
             <div class="hold-legend" id="holdingLegend"></div>
+            <div class="debug-bar" id="holdingDebug"></div>
         </div>
     </div>
 </div>
@@ -234,13 +274,15 @@
     }
 
     // ============================================================
-    // 加载四个 CSV 文件
+    // 加载 6 个 CSV 文件
     // ============================================================
     const files = [
         'DRLR_metrics.csv',
         'DRLR_nav.csv',
         'DRLR_annual_metrics.csv',
-        'DRLR_holding.csv'
+        'DRLR_holding.csv',
+        'DRLR_factor_latest.csv',
+        'DRLR_factor_history.csv'
     ];
 
     let loadedData = {};
@@ -255,6 +297,10 @@
             const key = file.replace('.csv', '');
             loadedData[key] = parseCSV(text);
         })
+        .catch(err => {
+            console.warn(`跳过 ${file}: ${err.message}`);
+            loadedData[file.replace('.csv', '')] = [];
+        })
     )).then(() => {
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('dashboard').classList.remove('hidden');
@@ -263,10 +309,6 @@
         document.getElementById('loading').innerHTML = `
             <div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>
             <div style="color:#8899b0;margin-top:12px;">${err.message}</div>
-            <div style="color:#5a6a80;margin-top:8px;font-size:14px;">
-                请确保以下 CSV 文件与当前页面在同一目录：<br>
-                DRLR_metrics.csv · DRLR_nav.csv · DRLR_annual_metrics.csv · DRLR_holding.csv
-            </div>
         `;
         console.error(err);
     });
@@ -280,13 +322,27 @@
     }
 
     // ============================================================
+    // 格式化数字
+    // ============================================================
+    function fmtPct(v, digits = 1) {
+        if (v === undefined || v === null || isNaN(v)) return '--';
+        return (v * 100).toFixed(digits) + '%';
+    }
+    function fmtNum(v, digits = 4) {
+        if (v === undefined || v === null || isNaN(v)) return '--';
+        return v.toFixed(digits);
+    }
+
+    // ============================================================
     // 渲染看板
     // ============================================================
     function renderDashboard(data) {
-        const metrics = data['DRLR_metrics'];
-        const nav     = data['DRLR_nav'];
-        const annual  = data['DRLR_annual_metrics'];
-        const holding = data['DRLR_holding'];
+        const metrics       = data['DRLR_metrics'];
+        const nav           = data['DRLR_nav'];
+        const annual        = data['DRLR_annual_metrics'];
+        const holding       = data['DRLR_holding'];
+        const factorLatest  = data['DRLR_factor_latest'];
+        const factorHistory = data['DRLR_factor_history'];
 
         if (!nav || !nav.length || !metrics || !metrics.length) {
             alert('关键数据为空，请检查 CSV 文件内容');
@@ -335,7 +391,6 @@
         const strategy  = nav.map(d => d['策略净值']);
         const benchmark = nav.map(d => d['基准净值']);
 
-        // 调仓点：从 holding 里找现金突变的日子
         const rebalanceDates = [];
         if (holding && holding.length > 1) {
             for (let i = 1; i < holding.length; i++) {
@@ -360,8 +415,10 @@
                 rebalanceDates.forEach(date => {
                     const idx = navMap[date];
                     if (idx === undefined) return;
+                    const meta = chart.getDatasetMeta(0).data[idx];
+                    if (!meta) return;
                     const x = xScale.getPixelForValue(idx);
-                    const y = chart.getDatasetMeta(0).data[idx].y;
+                    const y = meta.y;
                     if (x < chartArea.left || x > chartArea.right) return;
                     ctx.beginPath();
                     ctx.moveTo(x, y - 8);
@@ -420,7 +477,6 @@
         const retValues = years.map(y => annualMap[y].return * 100);
         const ddValues  = years.map(y => annualMap[y].drawdown * 100);
 
-        // 年度收益率
         const barCtx = document.getElementById('annualBarChart').getContext('2d');
         if (window._barChart) window._barChart.destroy();
         window._barChart = new Chart(barCtx, {
@@ -447,7 +503,6 @@
             }
         });
 
-        // 年度最大回撤
         const ddCtx = document.getElementById('annualDrawdownChart').getContext('2d');
         if (window._ddChart) window._ddChart.destroy();
         window._ddChart = new Chart(ddCtx, {
@@ -503,53 +558,287 @@
         tableWrap.innerHTML = tableHtml;
 
         // =====================================================
+        // ★ 最新因子快照 表
+        // =====================================================
+        if (factorLatest && factorLatest.length) {
+            // 推断最新日期（取第一行 date 字段，若无 date 则用最新调仓日）
+            const latestDate = factorLatest[0].date || (rebalanceDates.length ? rebalanceDates[rebalanceDates.length - 1] : '');
+            document.getElementById('latestFactorDate').textContent = latestDate ? `因子日期：${latestDate}` : '';
+
+            // 排序：入选优先，然后按因子值降序
+            const rows = [...factorLatest].sort((a, b) => {
+                if ((b.selected || 0) !== (a.selected || 0)) {
+                    return (b.selected || 0) - (a.selected || 0);
+                }
+                return (b.factor || 0) - (a.factor || 0);
+            });
+
+            let fHtml = `<table>
+                <thead><tr>
+                    <th>代码</th><th>名称</th><th>行业</th>
+                    <th class="num">股息率</th>
+                    <th class="num">ROE</th>
+                    <th class="num">因子值</th>
+                    <th>入选</th>
+                </tr></thead><tbody>`;
+            rows.forEach(r => {
+                const selected = r.selected == 1;
+                fHtml += `<tr class="${selected ? 'selected-row' : ''}">
+                    <td>${r.stock_code || ''}</td>
+                    <td>${r.name || ''}</td>
+                    <td>${r.industry || ''}</td>
+                    <td class="num">${fmtNum(r.dividend_yield, 6)}</td>
+                    <td class="num">${fmtNum(r.roe, 4)}</td>
+                    <td class="num">${fmtNum(r.factor, 6)}</td>
+                    <td>${selected ? '<span class="star">★</span>' : ''}</td>
+                </tr>`;
+            });
+            fHtml += '</tbody></table>';
+            document.getElementById('factorLatestTableWrap').innerHTML = fHtml;
+        } else {
+            document.getElementById('factorLatestTableWrap').innerHTML =
+                `<div class="text-muted" style="padding:20px;">未加载到 DRLR_factor_latest.csv</div>`;
+        }
+
+        // =====================================================
+        // ★ 最新因子横截面柱状图
+        // =====================================================
+        if (factorLatest && factorLatest.length) {
+            // 按因子值升序（横向柱状图从下往上）
+            const sorted = [...factorLatest].sort((a, b) => (a.factor || 0) - (b.factor || 0));
+            const labels = sorted.map(r => `${r.name || r.stock_code}`);
+            const values = sorted.map(r => r.factor || 0);
+            const colors = sorted.map(r => r.selected == 1
+                ? 'rgba(252,92,125,0.85)'
+                : 'rgba(74,144,217,0.75)');
+
+            const fCtx = document.getElementById('factorBarChart').getContext('2d');
+            if (window._factorBarChart) window._factorBarChart.destroy();
+            window._factorBarChart = new Chart(fCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '因子值',
+                        data: values,
+                        backgroundColor: colors,
+                        borderColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const idx = ctx.dataIndex;
+                                    const r = sorted[idx];
+                                    return [
+                                        `因子值: ${(r.factor || 0).toFixed(6)}`,
+                                        `股息率: ${(r.dividend_yield || 0).toFixed(6)}`,
+                                        `ROE: ${(r.roe || 0).toFixed(4)}`
+                                    ];
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: { color: '#8899b0' },
+                            grid: { color: '#1a222f' },
+                            title: { display: true, text: '因子值 (dividend_yield × roe)', color: '#8899b0' }
+                        },
+                        y: {
+                            ticks: { color: '#c8d8e8', font: { size: 10 } },
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // =====================================================
+        // ★ 因子时序折线图（每只股票一条线）
+        // =====================================================
+        if (factorHistory && factorHistory.length) {
+            // 按股票分组
+            const byStock = {};
+            factorHistory.forEach(r => {
+                const code = r.stock_code;
+                if (!code) return;
+                if (!byStock[code]) {
+                    byStock[code] = {
+                        name: r.name || code,
+                        industry: r.industry || '',
+                        points: []
+                    };
+                }
+                byStock[code].points.push({
+                    date: r.date,
+                    factor: r.factor || 0,
+                    dividend_yield: r.dividend_yield,
+                    roe: r.roe,
+                    selected: r.selected
+                });
+            });
+
+            const stockCodes = Object.keys(byStock);
+
+            // 全部调仓日（唯一，排序）
+            const allRebalanceDates = [...new Set(factorHistory.map(r => r.date))].sort();
+
+            // 每个股票在每个调仓日的因子值映射
+            stockCodes.forEach(code => {
+                const dateMap = {};
+                byStock[code].points.forEach(p => { dateMap[p.date] = p.factor; });
+                byStock[code].dateMap = dateMap;
+            });
+
+            // 颜色
+            const stockColors = {};
+            stockCodes.forEach((code, i) => {
+                stockColors[code] = hslColor(i, stockCodes.length, 0.85);
+            });
+
+            // dataset
+            const datasets = stockCodes.map(code => ({
+                label: `${byStock[code].name}(${byStock[code].industry})`,
+                data: allRebalanceDates.map(d => byStock[code].dateMap[d] !== undefined
+                    ? byStock[code].dateMap[d] : null),
+                borderColor: stockColors[code],
+                backgroundColor: stockColors[code],
+                borderWidth: 1.8,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                tension: 0.15,
+                spanGaps: true
+            }));
+
+            const tsCtx = document.getElementById('factorTsChart').getContext('2d');
+            if (window._factorTsChart) window._factorTsChart.destroy();
+            window._factorTsChart = new Chart(tsCtx, {
+                type: 'line',
+                data: {
+                    labels: allRebalanceDates,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'nearest', intersect: false },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    if (ctx.parsed.y === null) return null;
+                                    return `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(6)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                maxTicksLimit: 20,
+                                color: '#8899b0',
+                                callback: function(v, i) {
+                                    const d = allRebalanceDates[i];
+                                    return d ? d.slice(0, 7) : '';
+                                }
+                            },
+                            grid: { color: '#1a222f' }
+                        },
+                        y: {
+                            ticks: { color: '#8899b0' },
+                            grid: { color: '#1a222f' },
+                            title: { display: true, text: '因子值', color: '#8899b0' }
+                        }
+                    }
+                }
+            });
+
+            // 图例
+            const legendWrap = document.getElementById('factorLegend');
+            legendWrap.innerHTML = '';
+            stockCodes.forEach(code => {
+                const item = document.createElement('span');
+                item.className = 'lg-item';
+                item.innerHTML = `
+                    <span class="swatch" style="background:${stockColors[code]};"></span>
+                    ${byStock[code].name}(${byStock[code].industry})
+                `;
+                legendWrap.appendChild(item);
+            });
+        } else {
+            document.getElementById('factorTsChart').parentElement.innerHTML =
+                `<div class="text-muted" style="padding:20px;">未加载到 DRLR_factor_history.csv</div>`;
+        }
+
+        // =====================================================
         // 每日持仓明细（每只股票 + 现金）
         // =====================================================
-        if (!holding || !holding.length) return;
+        const debugBar = document.getElementById('holdingDebug');
+        if (!holding || !holding.length) {
+            debugBar.textContent = '⚠️ DRLR_holding.csv 没有数据';
+            return;
+        }
 
         const holdingDates = holding.map(d => d.date);
 
-        // 找出所有股票列（列名包含 '|'）
         const allStockCols = Object.keys(holding[0]).filter(k => k.includes('|'));
-        // 只保留在某个时点被持有过的股票
         const activeStocks = allStockCols.filter(col =>
             holding.some(h => (h[col] || 0) > 1)
         );
 
-        // 每只股票分配一个颜色
+        debugBar.textContent =
+            `调仓日 ${rebalanceDates.length} 个 · 历史出现过的股票 ${activeStocks.length} 只 · ` +
+            `总交易日 ${holding.length} 天`;
+
         const stockColors = {};
         activeStocks.forEach((col, i) => {
             stockColors[col] = hslColor(i, activeStocks.length, 0.85);
         });
 
-        // 数据集：现金在底层 + 每只股票
-        const datasets = [
-            {
-                label: '现金',
-                data: holding.map(h => h.cash || 0),
-                backgroundColor: 'rgba(136,153,176,0.55)',
-                borderColor: 'rgba(136,153,176,0.85)',
+        const STACK_ID = 'portfolio';
+
+        const datasets = [];
+
+        datasets.push({
+            label: '现金',
+            data: holding.map(h => h.cash || 0),
+            backgroundColor: 'rgba(136,153,176,0.55)',
+            borderColor: 'rgba(136,153,176,0.9)',
+            borderWidth: 0,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            tension: 0.1,
+            fill: true,
+            stack: STACK_ID,
+            order: 999
+        });
+
+        activeStocks.forEach(col => {
+            const name = col.includes('|') ? col.split('|')[1] : col;
+            datasets.push({
+                label: name || col,
+                data: holding.map(h => h[col] || 0),
+                backgroundColor: stockColors[col],
+                borderColor: stockColors[col],
                 borderWidth: 0,
                 pointRadius: 0,
+                pointHoverRadius: 0,
                 tension: 0.1,
-                fill: 'origin'
-            },
-            ...activeStocks.map(col => {
-                const name = col.includes('|') ? col.split('|')[1] : col;
-                return {
-                    label: name || col,
-                    data: holding.map(h => h[col] || 0),
-                    backgroundColor: stockColors[col],
-                    borderColor: stockColors[col],
-                    borderWidth: 0,
-                    pointRadius: 0,
-                    tension: 0.1,
-                    fill: 'origin'
-                };
-            })
-        ];
+                fill: true,
+                stack: STACK_ID,
+                order: 1
+            });
+        });
 
-        // 调仓竖线插件
         const rebalanceLinesPlugin = {
             id: 'rebalanceLines',
             afterDatasetsDraw(chart) {
@@ -582,6 +871,7 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: false,
                 interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: { display: false },
@@ -601,11 +891,13 @@
                 },
                 scales: {
                     x: {
+                        stacked: true,
                         ticks: { maxTicksLimit: 20, color: '#8899b0' },
                         grid: { color: '#1a222f' }
                     },
                     y: {
                         stacked: true,
+                        beginAtZero: true,
                         ticks: {
                             color: '#8899b0',
                             callback: v => (v / 10000).toFixed(0) + '万'
@@ -618,17 +910,14 @@
             plugins: [rebalanceLinesPlugin]
         });
 
-        // ---- 自动生成图例（现金 + 每只股票）----
         const legendWrap = document.getElementById('holdingLegend');
         legendWrap.innerHTML = '';
 
-        // 现金
         const cashItem = document.createElement('span');
         cashItem.className = 'lg-item';
-        cashItem.innerHTML = `<span class="swatch" style="background:rgba(136,153,176,0.85);"></span>现金`;
+        cashItem.innerHTML = `<span class="swatch" style="background:rgba(136,153,176,0.9);"></span>现金`;
         legendWrap.appendChild(cashItem);
 
-        // 每只股票
         activeStocks.forEach(col => {
             const name = col.includes('|') ? col.split('|')[1] : col;
             const item = document.createElement('span');
