@@ -167,6 +167,7 @@
             <div class="header-right">
                 <div>因子：<span class="highlight">股息率 × ROE</span> · 等权配置 Top 4</div>
                 <div id="latestFactorDate" style="margin-top:4px;"></div>
+                <div id="latestRebalanceDate" style="margin-top:2px;"></div>
             </div>
         </header>
 
@@ -206,7 +207,7 @@
             <div class="table-wrap" id="annualTableWrap"></div>
         </div>
 
-        <!-- ★ 每日持仓明细（移到因子之前） -->
+        <!-- 每日持仓明细 -->
         <div class="chart-box full" style="margin-bottom:28px;">
             <div class="chart-title">
                 🧩 每日持仓明细（股票 + 现金，单位：元）
@@ -217,12 +218,12 @@
             <div class="debug-bar" id="holdingDebug"></div>
         </div>
 
-        <!-- 最新因子快照 + 横截面 -->
+        <!-- 最新因子快照 + 最近调仓日横截面 -->
         <div class="chart-grid">
             <div class="chart-box">
                 <div class="chart-title">
                     📌 最新因子快照
-                    <span class="badge">红 = 本期入选</span>
+                    <span class="badge">回测结束日 · 最新一期（非调仓日）</span>
                 </div>
                 <div class="factor-table-wrap">
                     <div class="table-wrap" id="factorLatestTableWrap"></div>
@@ -230,8 +231,8 @@
             </div>
             <div class="chart-box">
                 <div class="chart-title">
-                    🎯 最新因子横截面
-                    <span class="badge">红=入选 蓝=未入选</span>
+                    🎯 最近调仓日因子横截面
+                    <span class="badge" id="factorBarDateBadge">红=入选 蓝=未入选</span>
                 </div>
                 <div class="chart-wrapper mid"><canvas id="factorBarChart"></canvas></div>
             </div>
@@ -565,7 +566,7 @@
         tableWrap.innerHTML = tableHtml;
 
         // =====================================================
-        // ★ 每日持仓明细（现在在因子之前渲染）
+        // 每日持仓明细
         // =====================================================
         const debugBar = document.getElementById('holdingDebug');
         if (!holding || !holding.length) {
@@ -713,18 +714,14 @@
         }
 
         // =====================================================
-        // 最新因子快照 表
+        // 最新因子快照 表（最新一期，不限调仓日）
         // =====================================================
         if (factorLatest && factorLatest.length) {
-            const latestDate = factorLatest[0].date || (rebalanceDates.length ? rebalanceDates[rebalanceDates.length - 1] : '');
-            document.getElementById('latestFactorDate').textContent = latestDate ? `因子日期：${latestDate}` : '';
+            const latestDate = factorLatest[0].date || '';
+            document.getElementById('latestFactorDate').textContent =
+                latestDate ? `最新快照日期：${latestDate}` : '';
 
-            const rows = [...factorLatest].sort((a, b) => {
-                if ((b.selected || 0) !== (a.selected || 0)) {
-                    return (b.selected || 0) - (a.selected || 0);
-                }
-                return (b.factor || 0) - (a.factor || 0);
-            });
+            const rows = [...factorLatest].sort((a, b) => (b.factor || 0) - (a.factor || 0));
 
             let fHtml = `<table>
                 <thead><tr>
@@ -732,19 +729,16 @@
                     <th class="num">股息率</th>
                     <th class="num">ROE</th>
                     <th class="num">因子值</th>
-                    <th>入选</th>
                 </tr></thead><tbody>`;
             rows.forEach(r => {
-                const selected = r.selected == 1;
                 const code = padCode(r.stock_code);
-                fHtml += `<tr class="${selected ? 'selected-row' : ''}">
+                fHtml += `<tr>
                     <td class="code">${code}</td>
                     <td>${r.name || ''}</td>
                     <td>${r.industry || ''}</td>
                     <td class="num">${fmtNum(r.dividend_yield, 6)}</td>
                     <td class="num">${fmtNum(r.roe, 4)}</td>
                     <td class="num">${fmtNum(r.factor, 6)}</td>
-                    <td>${selected ? '<span class="star">★</span>' : ''}</td>
                 </tr>`;
             });
             fHtml += '</tbody></table>';
@@ -755,13 +749,30 @@
         }
 
         // =====================================================
-        // 最新因子横截面柱状图
+        // 最近调仓日因子横截面柱状图（从 factorHistory 取最新一期）
         // =====================================================
-        if (factorLatest && factorLatest.length) {
-            const sorted = [...factorLatest].sort((a, b) => (a.factor || 0) - (b.factor || 0));
+        let latestRebalanceDate = null;
+        let latestRebalanceRows = [];
+        if (factorHistory && factorHistory.length) {
+            const histDates = [...new Set(factorHistory.map(r => r.date))].sort();
+            latestRebalanceDate = histDates[histDates.length - 1];
+            latestRebalanceRows = factorHistory.filter(r => r.date === latestRebalanceDate);
+
+            const badgeEl = document.getElementById('factorBarDateBadge');
+            if (badgeEl && latestRebalanceDate) {
+                badgeEl.textContent = `${latestRebalanceDate} · 红=入选 蓝=未入选`;
+            }
+            const headerEl = document.getElementById('latestRebalanceDate');
+            if (headerEl && latestRebalanceDate) {
+                headerEl.textContent = `最近调仓日：${latestRebalanceDate}`;
+            }
+        }
+
+        if (latestRebalanceRows.length) {
+            const sorted = [...latestRebalanceRows].sort((a, b) => (a.factor || 0) - (b.factor || 0));
             const labels = sorted.map(r => `${r.name || padCode(r.stock_code)}`);
             const values = sorted.map(r => r.factor || 0);
-            const colors = sorted.map(r => r.selected == 1
+            const colors = sorted.map(r => Number(r.selected) === 1
                 ? 'rgba(252,92,125,0.85)'
                 : 'rgba(74,144,217,0.75)');
 
@@ -798,7 +809,8 @@
                                     return [
                                         `因子值: ${(r.factor || 0).toFixed(6)}`,
                                         `股息率: ${(r.dividend_yield || 0).toFixed(6)}`,
-                                        `ROE: ${(r.roe || 0).toFixed(4)}`
+                                        `ROE: ${(r.roe || 0).toFixed(4)}`,
+                                        `入选: ${Number(r.selected) === 1 ? '是 ★' : '否'}`
                                     ];
                                 }
                             }
@@ -817,6 +829,9 @@
                     }
                 }
             });
+        } else {
+            document.getElementById('factorBarChart').parentElement.innerHTML =
+                `<div class="text-muted" style="padding:20px;">未加载到 DRLR_factor_history.csv</div>`;
         }
 
         // =====================================================
