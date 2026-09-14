@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高股息质量龙头轮动策略 · 季度调仓</title>
+    <title>DRLR 高股息质量龙头轮动策略 · 季度调仓</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -91,6 +91,7 @@
         .table-wrap tr.selected-row { background: rgba(240,194,127,0.06); }
         .table-wrap tr:hover { background: rgba(255,255,255,0.03); }
         .table-wrap .star { color: #fc5c7d; font-weight: 700; }
+        .table-wrap .code { font-family: 'JetBrains Mono', monospace; color: #f0c27f; }
 
         .legend-inline {
             display: flex; gap: 18px; flex-wrap: wrap; margin-top: 10px;
@@ -128,7 +129,6 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
-        /* 因子快照表专用 */
         .factor-table-wrap {
             max-height: 520px; overflow-y: auto;
             border-radius: 10px; border: 1px solid #1f2a3a;
@@ -157,10 +157,11 @@
     <div id="dashboard" class="hidden">
         <header class="header">
             <div class="header-left">
-                <h1>💎 高股息质量龙头轮动策略</h1>
+                <h1>💎 DRLR 高股息质量龙头轮动策略</h1>
                 <div class="subtitle">
                     <span>Dividend × ROE</span>
                     <span>📅 季度调仓</span>
+                    <span>🏭 行业上限 2 只</span>
                     <span id="dateRange"></span>
                 </div>
             </div>
@@ -206,7 +207,7 @@
             <div class="table-wrap" id="annualTableWrap"></div>
         </div>
 
-        <!-- ★ 最新因子快照 -->
+        <!-- 最新因子快照 + 横截面 -->
         <div class="chart-grid">
             <div class="chart-box">
                 <div class="chart-title">
@@ -226,7 +227,7 @@
             </div>
         </div>
 
-        <!-- ★ 因子时序 -->
+        <!-- 因子时序 -->
         <div class="chart-box full" style="margin-bottom:28px;">
             <div class="chart-title">
                 ⏱️ 因子时序（dividend_yield × roe）
@@ -251,13 +252,31 @@
 
 <script>
     // ============================================================
-    // CSV 解析（去 BOM）
+    // ★ 补齐股票代码到 6 位
+    // ============================================================
+    function padCode(code) {
+        if (code === undefined || code === null || code === '') return '';
+        // 去掉可能的 .SH/.SZ 后缀或小数点
+        let s = String(code).trim();
+        // 若含有 '.0'（被 parseFloat 转成 2532.0），先去掉
+        s = s.replace(/\.0+$/, '');
+        // 只保留数字部分
+        s = s.replace(/[^0-9]/g, '');
+        return s.padStart(6, '0');
+    }
+
+    // ============================================================
+    // CSV 解析（去 BOM）★ stock_code 保持字符串
     // ============================================================
     function parseCSV(text) {
         if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
         const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
         if (lines.length === 0) return [];
         const headers = lines[0].split(',').map(h => h.trim());
+
+        // 需要保持字符串的列（股票代码、日期等）
+        const stringCols = new Set(['stock_code', 'code', 'date', 'name', 'industry']);
+
         const data = [];
         for (let i = 1; i < lines.length; i++) {
             const values = lines[i].split(',').map(v => v.trim());
@@ -265,8 +284,17 @@
             const row = {};
             headers.forEach((h, idx) => {
                 let val = values[idx] || '';
-                if (!isNaN(val) && val !== '') val = parseFloat(val);
-                row[h] = val;
+
+                if (stringCols.has(h)) {
+                    // 字符串列：保持原样
+                    row[h] = val;
+                } else {
+                    // 数值列：尝试转数字
+                    if (!isNaN(val) && val !== '') {
+                        val = parseFloat(val);
+                    }
+                    row[h] = val;
+                }
             });
             data.push(row);
         }
@@ -322,15 +350,11 @@
     }
 
     // ============================================================
-    // 格式化数字
+    // 格式化
     // ============================================================
-    function fmtPct(v, digits = 1) {
-        if (v === undefined || v === null || isNaN(v)) return '--';
-        return (v * 100).toFixed(digits) + '%';
-    }
     function fmtNum(v, digits = 4) {
         if (v === undefined || v === null || isNaN(v)) return '--';
-        return v.toFixed(digits);
+        return Number(v).toFixed(digits);
     }
 
     // ============================================================
@@ -558,14 +582,12 @@
         tableWrap.innerHTML = tableHtml;
 
         // =====================================================
-        // ★ 最新因子快照 表
+        // 最新因子快照 表
         // =====================================================
         if (factorLatest && factorLatest.length) {
-            // 推断最新日期（取第一行 date 字段，若无 date 则用最新调仓日）
             const latestDate = factorLatest[0].date || (rebalanceDates.length ? rebalanceDates[rebalanceDates.length - 1] : '');
             document.getElementById('latestFactorDate').textContent = latestDate ? `因子日期：${latestDate}` : '';
 
-            // 排序：入选优先，然后按因子值降序
             const rows = [...factorLatest].sort((a, b) => {
                 if ((b.selected || 0) !== (a.selected || 0)) {
                     return (b.selected || 0) - (a.selected || 0);
@@ -583,8 +605,9 @@
                 </tr></thead><tbody>`;
             rows.forEach(r => {
                 const selected = r.selected == 1;
+                const code = padCode(r.stock_code);
                 fHtml += `<tr class="${selected ? 'selected-row' : ''}">
-                    <td>${r.stock_code || ''}</td>
+                    <td class="code">${code}</td>
                     <td>${r.name || ''}</td>
                     <td>${r.industry || ''}</td>
                     <td class="num">${fmtNum(r.dividend_yield, 6)}</td>
@@ -601,12 +624,11 @@
         }
 
         // =====================================================
-        // ★ 最新因子横截面柱状图
+        // 最新因子横截面柱状图
         // =====================================================
         if (factorLatest && factorLatest.length) {
-            // 按因子值升序（横向柱状图从下往上）
             const sorted = [...factorLatest].sort((a, b) => (a.factor || 0) - (b.factor || 0));
-            const labels = sorted.map(r => `${r.name || r.stock_code}`);
+            const labels = sorted.map(r => `${r.name || padCode(r.stock_code)}`);
             const values = sorted.map(r => r.factor || 0);
             const colors = sorted.map(r => r.selected == 1
                 ? 'rgba(252,92,125,0.85)'
@@ -634,6 +656,11 @@
                         legend: { display: false },
                         tooltip: {
                             callbacks: {
+                                title: function(items) {
+                                    const idx = items[0].dataIndex;
+                                    const r = sorted[idx];
+                                    return `${padCode(r.stock_code)} ${r.name || ''}`;
+                                },
                                 label: function(ctx) {
                                     const idx = ctx.dataIndex;
                                     const r = sorted[idx];
@@ -662,13 +689,12 @@
         }
 
         // =====================================================
-        // ★ 因子时序折线图（每只股票一条线）
+        // 因子时序折线图
         // =====================================================
         if (factorHistory && factorHistory.length) {
-            // 按股票分组
             const byStock = {};
             factorHistory.forEach(r => {
-                const code = r.stock_code;
+                const code = padCode(r.stock_code);
                 if (!code) return;
                 if (!byStock[code]) {
                     byStock[code] = {
@@ -679,32 +705,24 @@
                 }
                 byStock[code].points.push({
                     date: r.date,
-                    factor: r.factor || 0,
-                    dividend_yield: r.dividend_yield,
-                    roe: r.roe,
-                    selected: r.selected
+                    factor: r.factor || 0
                 });
             });
 
             const stockCodes = Object.keys(byStock);
-
-            // 全部调仓日（唯一，排序）
             const allRebalanceDates = [...new Set(factorHistory.map(r => r.date))].sort();
 
-            // 每个股票在每个调仓日的因子值映射
             stockCodes.forEach(code => {
                 const dateMap = {};
                 byStock[code].points.forEach(p => { dateMap[p.date] = p.factor; });
                 byStock[code].dateMap = dateMap;
             });
 
-            // 颜色
             const stockColors = {};
             stockCodes.forEach((code, i) => {
                 stockColors[code] = hslColor(i, stockCodes.length, 0.85);
             });
 
-            // dataset
             const datasets = stockCodes.map(code => ({
                 label: `${byStock[code].name}(${byStock[code].industry})`,
                 data: allRebalanceDates.map(d => byStock[code].dateMap[d] !== undefined
@@ -748,7 +766,7 @@
                                 color: '#8899b0',
                                 callback: function(v, i) {
                                     const d = allRebalanceDates[i];
-                                    return d ? d.slice(0, 7) : '';
+                                    return d ? String(d).slice(0, 7) : '';
                                 }
                             },
                             grid: { color: '#1a222f' }
@@ -762,7 +780,6 @@
                 }
             });
 
-            // 图例
             const legendWrap = document.getElementById('factorLegend');
             legendWrap.innerHTML = '';
             stockCodes.forEach(code => {
@@ -780,7 +797,7 @@
         }
 
         // =====================================================
-        // 每日持仓明细（每只股票 + 现金）
+        // 每日持仓明细
         // =====================================================
         const debugBar = document.getElementById('holdingDebug');
         if (!holding || !holding.length) {
@@ -805,7 +822,6 @@
         });
 
         const STACK_ID = 'portfolio';
-
         const datasets = [];
 
         datasets.push({
