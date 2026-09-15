@@ -127,6 +127,11 @@
             background: #2a3a50;
             color: #4cd9a0;
         }
+        /* ★ 新增：个性化指数标签配色 */
+        .card .tag.personal {
+            background: #2a3a50;
+            color: #b57edc;
+        }
 
         /* ---- 底部统计栏 ---- */
         .footer {
@@ -187,7 +192,7 @@
 <div class="container">
     <div class="header">
         <h1>📊 InvestmentQuant</h1>
-        <p>投资策略 · 量化研究</p>
+        <p>投资策略 · 量化研究 · 个性化指数</p>
     </div>
 
     <!-- 策略模块 -->
@@ -226,7 +231,7 @@
             <span class="tag strategy">策略</span>
         </a>
 
-        <!-- ★ 新增 DRLR 高股息质量龙头轮动策略 -->
+        <!-- ★ DRLR 高股息质量龙头轮动策略 -->
         <a href="./strategy-drlr/" class="card">
             <div class="icon">💎</div>
             <div class="name">高股息质量龙头轮动</div>
@@ -263,6 +268,19 @@
             <div class="name">中证银行指数投资价值</div>
             <div class="desc">银行股息率 vs 10年国债收益率<br />股债利差历史分位 · 估值信号</div>
             <span class="tag research">研究工具</span>
+        </a>
+    </div>
+
+    <!-- ★ 新增：个性化指数 -->
+    <div class="section-title">
+        <i class="fas fa-fingerprint"></i> 个性化指数 <span class="badge">自研 · 指数</span>
+    </div>
+    <div class="card-grid">
+        <a href="./index-ronValue30/" class="card">
+            <div class="icon">🪙</div>
+            <div class="name">RON微盘价值30</div>
+            <div class="desc">微盘 · 价值 · 30 只等权成分<br />指数基准 2013-12-31 · 1000 点</div>
+            <span class="tag personal">个性化指数</span>
         </a>
     </div>
 
