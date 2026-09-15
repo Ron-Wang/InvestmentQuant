@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RON微盘价值30 · 指数看板</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-<!-- 数据脚本：优先使用它，file:// 也能加载 -->
-<script src="ron_data.js" onerror="window.__RON_DATA_JS_FAILED__=true"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -14,7 +12,6 @@ body {
     background: #0b0e17; color: #e6edf5; padding: 24px; min-height: 100vh;
 }
 .container { max-width: 1440px; margin: 0 auto; }
-
 .loading { text-align: center; padding: 80px 20px; color: #5a6a80; font-size: 18px; }
 .loading .spinner {
     display: inline-block; width: 40px; height: 40px;
@@ -22,7 +19,6 @@ body {
     border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .header {
     display: flex; justify-content: space-between; align-items: flex-start;
     flex-wrap: wrap; margin-bottom: 28px; padding: 20px 24px;
@@ -42,7 +38,6 @@ body {
 }
 .header-right { text-align: right; font-size: 13px; color: #8899b0; }
 .header-right .highlight { color: #f0c27f; font-weight: 600; }
-
 .kpi-grid {
     display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 14px; margin-bottom: 28px;
@@ -56,10 +51,7 @@ body {
 .kpi-value.positive { color: #4cd9a0; }
 .kpi-value.negative { color: #fc6b6b; }
 .kpi-value.neutral  { color: #f0c27f; }
-
-.chart-grid {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px;
-}
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
 .chart-box {
     background: #141b26; border-radius: 16px; padding: 18px 18px 10px;
     border: 1px solid #1f2a3a;
@@ -75,7 +67,6 @@ body {
 }
 .chart-wrapper { position: relative; height: 260px; }
 .chart-wrapper.tall { height: 340px; }
-
 .table-wrap { overflow-x: auto; margin-top: 6px; }
 .table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .table-wrap th {
@@ -90,7 +81,6 @@ body {
 .table-wrap .num { font-family: 'JetBrains Mono', monospace; text-align: right; }
 .table-wrap .pos { color: #4cd9a0; }
 .table-wrap .neg { color: #fc6b6b; }
-
 .legend-inline {
     display: flex; gap: 18px; flex-wrap: wrap;
     margin-top: 6px; font-size: 12px; color: #8899b0;
@@ -102,7 +92,6 @@ body {
 .text-muted { color: #5a6a80; font-size: 12px; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
 .hidden { display: none !important; }
-
 .heatmap-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .heatmap-table th {
     padding: 6px 8px; color: #7a8aa0; font-size: 11px;
@@ -117,14 +106,11 @@ body {
     background: #141b26; color: #f0c27f; font-weight: 600;
     font-family: inherit; text-align: left;
 }
-
 .err-box {
     background: rgba(252,107,107,0.08);
     border: 1px solid rgba(252,107,107,0.4);
-    border-radius: 12px;
-    padding: 20px 24px;
-    color: #fc6b6b;
-    margin-bottom: 20px;
+    border-radius: 12px; padding: 20px 24px;
+    color: #fc6b6b; margin-bottom: 20px;
 }
 .err-box h3 { font-size: 16px; margin-bottom: 10px; }
 .err-box p, .err-box li { font-size: 13px; color: #c8d8e8; line-height: 1.7; }
@@ -133,7 +119,6 @@ body {
     color: #f0c27f; font-family: 'JetBrains Mono', monospace; font-size: 12px;
 }
 .err-box ul { padding-left: 20px; margin-top: 8px; }
-
 @media (max-width: 900px) {
     .chart-grid { grid-template-columns: 1fr; }
     .header { flex-direction: column; gap: 10px; }
@@ -152,7 +137,6 @@ body {
         <div class="spinner"></div>
         <div>正在加载 RONVALUE30 指数数据 ...</div>
     </div>
-
     <div id="errorBox" class="err-box hidden"></div>
 
     <div id="dashboard" class="hidden">
@@ -199,9 +183,7 @@ body {
                 <div class="chart-title">📋 年度业绩明细</div>
                 <span class="text-muted">交易日数 · 风险调整指标</span>
             </div>
-            <div class="table-wrap" id="annualTableWrap">
-                <div class="text-muted" style="padding:12px;">加载中...</div>
-            </div>
+            <div class="table-wrap" id="annualTableWrap"></div>
         </div>
 
         <div class="chart-box full" style="margin-bottom:28px;">
@@ -209,9 +191,7 @@ body {
                 <div class="chart-title">🔥 月度收益热力图</div>
                 <span class="text-muted">绿色为盈利 · 红色为亏损</span>
             </div>
-            <div class="table-wrap" id="heatmapWrap">
-                <div class="text-muted" style="padding:12px;">加载中...</div>
-            </div>
+            <div class="table-wrap" id="heatmapWrap"></div>
         </div>
 
         <div class="chart-grid">
@@ -259,16 +239,14 @@ body {
                 <div class="chart-title">📌 最新一期成分股</div>
                 <span class="text-muted" id="constituentDate"></span>
             </div>
-            <div class="table-wrap" id="constituentTableWrap">
-                <div class="text-muted" style="padding:12px;">加载中...</div>
-            </div>
+            <div class="table-wrap" id="constituentTableWrap"></div>
         </div>
     </div>
 </div>
 
 <script>
 // ============================================================
-// 工具：CSV 解析（用于 fetch 回退）
+// CSV 解析
 // ============================================================
 function parseCSV(text) {
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
@@ -290,29 +268,19 @@ function parseCSV(text) {
     return data;
 }
 
-// ============================================================
-// 配色
-// ============================================================
 const COLOR = {
-    gold:  '#f0c27f',
-    blue:  '#4a90d9',
-    pink:  '#fc5c7d',
-    green: '#4cd9a0',
-    red:   '#fc6b6b',
-    grid:  '#1a222f',
-    tick:  '#8899b0',
+    gold:  '#f0c27f', blue: '#4a90d9', pink: '#fc5c7d',
+    green: '#4cd9a0', red:  '#fc6b6b', grid: '#1a222f', tick: '#8899b0',
 };
 const commonAxis = {
     x: { ticks: { maxTicksLimit: 12, color: COLOR.tick }, grid: { color: COLOR.grid } },
     y: { ticks: { color: COLOR.tick }, grid: { color: COLOR.grid } },
 };
-
 function safeNumber(v) {
     if (v === null || v === undefined || v === '') return NaN;
     const n = Number(v);
     return isNaN(n) ? NaN : n;
 }
-
 function showError(html) {
     const box = document.getElementById('errorBox');
     box.innerHTML = html;
@@ -321,110 +289,70 @@ function showError(html) {
 }
 
 // ============================================================
-// 数据加载：优先 window.RON_DATA，其次 fetch CSV
+// 加载 7 个 CSV
 // ============================================================
-function normalizeFromRonData(D) {
-    return {
-        metrics:     D.metrics     || [],
-        nav:         D.nav         || [],
-        yearly:      D.yearly      || [],
-        monthly:     D.monthly     || {},   // 对象 {year: {"1月":..}}
-        weight:      D.weight      || [],
-        factor:      D.factor      || [],
-        constituent: D.constituent || [],
-    };
-}
+const FILES = [
+    'ron_metrics.csv',
+    'ron_nav.csv',
+    'ron_yearly_metrics.csv',
+    'ron_monthly_pivot.csv',
+    'ron_weight_stats.csv',
+    'ron_factor_stats.csv',
+    'ron_latest_constituents.csv',
+];
 
-function loadFromCSVFallback() {
-    const files = [
-        'ron_metrics.csv',
-        'ron_nav.csv',
-        'ron_yearly_metrics.csv',
-        'ron_monthly_pivot.csv',
-        'ron_weight_stats.csv',
-        'ron_factor_stats.csv',
-        'ron_latest_constituents.csv',
-    ];
-    return Promise.all(files.map(f =>
-        fetch(f).then(r => {
-            if (!r.ok) throw new Error(`HTTP ${r.status} — ${f}`);
-            return r.text();
-        }).then(t => ({ f, t }))
-    )).then(arr => {
-        const map = {};
-        arr.forEach(({ f, t }) => { map[f.replace('.csv','')] = parseCSV(t); });
+Promise.all(FILES.map(f =>
+    fetch(f).then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${f}`);
+        return r.text();
+    }).then(t => ({ name: f.replace('.csv', ''), rows: parseCSV(t) }))
+)).then(results => {
+    const map = {};
+    results.forEach(({ name, rows }) => map[name] = rows);
 
-        // monthly_pivot 是 CSV，需要转成对象
-        const monthlyObj = {};
-        (map['ron_monthly_pivot'] || []).forEach(row => {
-            const y = row.year;
-            const o = {};
-            Object.keys(row).forEach(k => { if (k !== 'year') o[k] = row[k]; });
-            monthlyObj[y] = o;
-        });
-
-        return {
-            metrics:     map['ron_metrics']             || [],
-            nav:         map['ron_nav']                 || [],
-            yearly:      map['ron_yearly_metrics']      || [],
-            monthly:     monthlyObj,
-            weight:      map['ron_weight_stats']        || [],
-            factor:      map['ron_factor_stats']        || [],
-            constituent: map['ron_latest_constituents'] || [],
-        };
+    // monthly_pivot CSV → 对象 {year: {"1月":..}}
+    const monthlyObj = {};
+    (map['ron_monthly_pivot'] || []).forEach(row => {
+        const y = row.year;
+        const o = {};
+        Object.keys(row).forEach(k => { if (k !== 'year') o[k] = row[k]; });
+        monthlyObj[y] = o;
     });
-}
 
-// ============================================================
-// 启动
-// ============================================================
-(function bootstrap() {
-    const D = window.RON_DATA;
+    const D = {
+        metrics:     map['ron_metrics']             || [],
+        nav:         map['ron_nav']                 || [],
+        yearly:      map['ron_yearly_metrics']      || [],
+        monthly:     monthlyObj,
+        weight:      map['ron_weight_stats']        || [],
+        factor:      map['ron_factor_stats']        || [],
+        constituent: map['ron_latest_constituents'] || [],
+    };
 
-    if (D && typeof D === 'object') {
-        console.log('[RON] 使用 ron_data.js 数据');
-        // ron_data.js 的字段名已经是 {metrics, nav, yearly, monthly, weight, factor, constituent}
-        const data = normalizeFromRonData(D);
-        if (!data.nav.length && !data.metrics.length) {
-            showError(`
-                <h3>⚠️ ron_data.js 内容为空</h3>
-                <p>文件存在但数据结构不完整。请检查 <code>prepare_ron_html_data.py</code> 是否成功运行。</p>
-            `);
-            return;
-        }
-        document.getElementById('loading').classList.add('hidden');
-        document.getElementById('dashboard').classList.remove('hidden');
-        try { render(data); } catch (e) {
-            console.error(e);
-            showError(`<h3>⚠️ 渲染出错</h3><p>${e.message}</p>`);
-        }
+    if (!D.nav.length && !D.metrics.length) {
+        showError(`
+            <h3>⚠️ CSV 加载成功但内容为空</h3>
+            <p>请确认 <code>python prepare_ron_html_data.py</code> 已成功运行，且 7 个 CSV 中至少有 <code>ron_nav.csv</code> 和 <code>ron_metrics.csv</code> 有数据。</p>
+        `);
         return;
     }
 
-    // 回退：fetch CSV
-    console.log('[RON] ron_data.js 未加载，尝试 fetch CSV');
-    loadFromCSVFallback()
-        .then(data => {
-            if (!data.nav.length) {
-                throw new Error('ron_nav.csv 为空或不存在');
-            }
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('dashboard').classList.remove('hidden');
-            render(data);
-        })
-        .catch(err => {
-            console.error(err);
-            showError(`
-                <h3>⚠️ 数据加载失败</h3>
-                <p>${err.message}</p>
-                <p style="margin-top:10px;">请二选一：</p>
-                <ul>
-                    <li><b>方式 A（推荐）</b>：运行 <code>python prepare_ron_html_data.py</code> 生成 <code>ron_data.js</code>，与 HTML 放同目录，直接双击打开。</li>
-                    <li><b>方式 B</b>：把 7 个 <code>ron_*.csv</code> 放同目录，然后在该目录执行 <code>python -m http.server 8000</code>，访问 <code>http://localhost:8000/index.html</code>。</li>
-                </ul>
-            `);
-        });
-})();
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('dashboard').classList.remove('hidden');
+    render(D);
+}).catch(err => {
+    console.error(err);
+    showError(`
+        <h3>⚠️ 数据加载失败：${err.message}</h3>
+        <p>最常见原因：<b>双击打开了 HTML</b>（地址是 <code>file://</code>），浏览器安全策略禁止读取本地 CSV。</p>
+        <p style="margin-top:10px;"><b>解决方法：用 HTTP 服务打开</b></p>
+        <ul>
+            <li>在本目录下执行：<code>python -m http.server 8000</code></li>
+            <li>浏览器访问：<code>http://localhost:8000/index.html</code></li>
+        </ul>
+        <p style="margin-top:10px;">如果已经用 HTTP 打开还报 404，说明 CSV 没生成，请先运行 <code>python prepare_ron_html_data.py</code>。</p>
+    `);
+});
 
 // ============================================================
 // 主渲染
@@ -432,20 +360,16 @@ function loadFromCSVFallback() {
 function render(D) {
     const { metrics, nav, yearly, monthly, weight, factor, constituent } = D;
 
-    // ---------- 头部 ----------
     if (nav.length) {
         const firstDate = nav[0].date;
         const lastDate  = nav[nav.length - 1].date;
-        const lastNAV   = safeNumber(nav[nav.length - 1]['累计净值'] ?? nav[nav.length - 1]['nav']);
+        const lastNAV   = safeNumber(nav[nav.length - 1]['累计净值']);
         document.getElementById('dateRange').textContent = `${firstDate} ~ ${lastDate}`;
         document.getElementById('latestPoint').textContent =
             `最新净值 ${isNaN(lastNAV) ? '--' : lastNAV.toFixed(2)}`;
     }
 
-    // ---------- KPI ----------
-    renderKPI(metrics);
-
-    // ---------- 各图 ----------
+    try { renderKPI(metrics); } catch (e) { console.error('KPI:', e); }
     try { renderNAV(nav); } catch (e) { console.error('NAV:', e); }
     try { renderAnnualBar(yearly); } catch (e) { console.error('AnnualBar:', e); }
     try { renderAnnualDD(yearly); } catch (e) { console.error('AnnualDD:', e); }
@@ -461,16 +385,14 @@ function render(D) {
 // ---------- KPI ----------
 function renderKPI(metrics) {
     const kpiMap = {};
-    (metrics || []).forEach(r => {
-        kpiMap[r['指标']] = safeNumber(r['数值']);
-    });
+    (metrics || []).forEach(r => { kpiMap[r['指标']] = safeNumber(r['数值']); });
     const cfg = [
-        { key: '总收益率',   label: '总收益率',  fmt: v => (v*100).toFixed(1)+'%' },
-        { key: '年化收益率', label: '年化收益',  fmt: v => (v*100).toFixed(1)+'%' },
-        { key: '年化波动率', label: '年化波动',  fmt: v => (v*100).toFixed(1)+'%' },
-        { key: '夏普比率',   label: '夏普比率',  fmt: v => v.toFixed(2) },
-        { key: '最大回撤',   label: '最大回撤',  fmt: v => (v*100).toFixed(1)+'%' },
-        { key: 'Calmar比率', label: 'Calmar',    fmt: v => v.toFixed(2) },
+        { key: '总收益率',   label: '总收益率', fmt: v => (v*100).toFixed(1)+'%' },
+        { key: '年化收益率', label: '年化收益', fmt: v => (v*100).toFixed(1)+'%' },
+        { key: '年化波动率', label: '年化波动', fmt: v => (v*100).toFixed(1)+'%' },
+        { key: '夏普比率',   label: '夏普比率', fmt: v => v.toFixed(2) },
+        { key: '最大回撤',   label: '最大回撤', fmt: v => (v*100).toFixed(1)+'%' },
+        { key: 'Calmar比率', label: 'Calmar',   fmt: v => v.toFixed(2) },
     ];
     const grid = document.getElementById('kpiGrid');
     grid.innerHTML = '';
@@ -497,27 +419,18 @@ function renderNAV(nav) {
     const labels = nav.map(d => d.date);
     const values = nav.map(d => safeNumber(d['累计净值']));
     const dd     = nav.map(d => safeNumber(d['回撤']) * 100);
-
     if (window._navChart) window._navChart.destroy();
     window._navChart = new Chart(document.getElementById('navChart'), {
         type: 'line',
         data: {
             labels,
             datasets: [
-                {
-                    label: '累计净值', data: values,
-                    borderColor: COLOR.gold,
-                    backgroundColor: 'rgba(240,194,127,0.10)',
-                    borderWidth: 2, pointRadius: 0, tension: 0.1,
-                    yAxisID: 'y', fill: true,
-                },
-                {
-                    label: '回撤 %', data: dd,
-                    borderColor: COLOR.red,
-                    backgroundColor: 'rgba(252,107,107,0.15)',
-                    borderWidth: 1.2, pointRadius: 0, tension: 0.1,
-                    yAxisID: 'y1', fill: true,
-                },
+                { label: '累计净值', data: values, borderColor: COLOR.gold,
+                  backgroundColor: 'rgba(240,194,127,0.10)', borderWidth: 2,
+                  pointRadius: 0, tension: 0.1, yAxisID: 'y', fill: true },
+                { label: '回撤 %', data: dd, borderColor: COLOR.red,
+                  backgroundColor: 'rgba(252,107,107,0.15)', borderWidth: 1.2,
+                  pointRadius: 0, tension: 0.1, yAxisID: 'y1', fill: true },
             ],
         },
         options: {
@@ -526,40 +439,30 @@ function renderNAV(nav) {
             plugins: { legend: { display: false } },
             scales: {
                 x: commonAxis.x,
-                y: {
-                    position: 'left',
-                    ticks: { color: COLOR.tick }, grid: { color: COLOR.grid },
-                    title: { display: true, text: '净值', color: COLOR.tick },
-                },
-                y1: {
-                    position: 'right',
-                    ticks: { color: COLOR.tick, callback: v => v + '%' },
-                    grid: { display: false },
-                    title: { display: true, text: '回撤', color: COLOR.tick },
-                },
+                y: { position: 'left', ticks: { color: COLOR.tick }, grid: { color: COLOR.grid },
+                     title: { display: true, text: '净值', color: COLOR.tick } },
+                y1: { position: 'right', ticks: { color: COLOR.tick, callback: v => v + '%' },
+                      grid: { display: false },
+                      title: { display: true, text: '回撤', color: COLOR.tick } },
             },
         },
     });
 }
 
-// ---------- 年度收益柱 ----------
+// ---------- 年度柱状 ----------
 function renderAnnualBar(yearly) {
     if (!yearly || !yearly.length) return;
     const years = yearly.map(r => String(r['年份']));
     const ret   = yearly.map(r => safeNumber(r['总收益率']) * 100);
-
     if (window._barChart) window._barChart.destroy();
     window._barChart = new Chart(document.getElementById('annualBarChart'), {
         type: 'bar',
-        data: {
-            labels: years,
-            datasets: [{
-                data: ret,
-                backgroundColor: ret.map(v => v >= 0 ? 'rgba(76,217,160,0.7)' : 'rgba(252,107,107,0.7)'),
-                borderColor:     ret.map(v => v >= 0 ? COLOR.green : COLOR.red),
-                borderWidth: 1.5,
-            }],
-        },
+        data: { labels: years, datasets: [{
+            data: ret,
+            backgroundColor: ret.map(v => v >= 0 ? 'rgba(76,217,160,0.7)' : 'rgba(252,107,107,0.7)'),
+            borderColor: ret.map(v => v >= 0 ? COLOR.green : COLOR.red),
+            borderWidth: 1.5,
+        }]},
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
@@ -571,23 +474,19 @@ function renderAnnualBar(yearly) {
     });
 }
 
-// ---------- 年度最大回撤 ----------
+// ---------- 年度回撤 ----------
 function renderAnnualDD(yearly) {
     if (!yearly || !yearly.length) return;
     const years = yearly.map(r => String(r['年份']));
     const dd    = yearly.map(r => safeNumber(r['最大回撤']) * 100);
-
     if (window._ddChart) window._ddChart.destroy();
     window._ddChart = new Chart(document.getElementById('annualDrawdownChart'), {
         type: 'bar',
-        data: {
-            labels: years,
-            datasets: [{
-                data: dd,
-                backgroundColor: 'rgba(252,107,107,0.6)',
-                borderColor: COLOR.red, borderWidth: 1.5,
-            }],
-        },
+        data: { labels: years, datasets: [{
+            data: dd,
+            backgroundColor: 'rgba(252,107,107,0.6)',
+            borderColor: COLOR.red, borderWidth: 1.5,
+        }]},
         options: {
             responsive: true, maintainAspectRatio: false,
             plugins: { legend: { display: false } },
@@ -599,7 +498,7 @@ function renderAnnualDD(yearly) {
     });
 }
 
-// ---------- 年度明细表 ----------
+// ---------- 年度表 ----------
 function renderAnnualTable(yearly) {
     const wrap = document.getElementById('annualTableWrap');
     if (!yearly || !yearly.length) {
@@ -617,7 +516,6 @@ function renderAnnualTable(yearly) {
         const sp = safeNumber(r['夏普比率']);
         const md = safeNumber(r['最大回撤']);
         const cm = safeNumber(r['Calmar比率']);
-        const dy = r['交易日数'];
         const f = (v, pct=true) => isNaN(v) ? '--' : (pct ? (v*100).toFixed(1)+'%' : v.toFixed(2));
         html += `<tr>
             <td>${r['年份']}</td>
@@ -627,7 +525,7 @@ function renderAnnualTable(yearly) {
             <td class="num">${f(sp, false)}</td>
             <td class="num neg">${f(md)}</td>
             <td class="num">${f(cm, false)}</td>
-            <td class="num">${dy ?? '--'}</td>
+            <td class="num">${r['交易日数'] ?? '--'}</td>
         </tr>`;
     });
     html += '</tbody></table>';
@@ -641,8 +539,6 @@ function renderHeatmap(monthly) {
         wrap.innerHTML = '<div class="text-muted" style="padding:12px;">暂无月度数据</div>';
         return;
     }
-
-    // 统一转成数组 [{year, "1月":.., ...}, ...]
     const rows = [];
     if (Array.isArray(monthly)) {
         monthly.forEach(r => rows.push(Object.assign({}, r)));
@@ -654,32 +550,26 @@ function renderHeatmap(monthly) {
         });
     }
     rows.sort((a, b) => String(a.year).localeCompare(String(b.year)));
-
     if (!rows.length) {
         wrap.innerHTML = '<div class="text-muted" style="padding:12px;">暂无月度数据</div>';
         return;
     }
-
     const monthKeys = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-
     let maxAbs = 0;
     rows.forEach(r => monthKeys.forEach(m => {
         const v = safeNumber(r[m]);
         if (!isNaN(v)) maxAbs = Math.max(maxAbs, Math.abs(v));
     }));
     if (maxAbs === 0) maxAbs = 0.01;
-
     const cellColor = v => {
         if (isNaN(v)) return 'rgba(31,42,58,0.4)';
         const intensity = Math.min(1, Math.abs(v) / maxAbs);
         const alpha = 0.10 + intensity * 0.65;
         return v >= 0 ? `rgba(76,217,160,${alpha})` : `rgba(252,107,107,${alpha})`;
     };
-
     let html = `<table class="heatmap-table"><thead><tr><th>年份</th>`;
     monthKeys.forEach(m => html += `<th>${m}</th>`);
     html += `<th>全年</th></tr></thead><tbody>`;
-
     rows.forEach(r => {
         html += `<tr><td class="year-cell">${r.year}</td>`;
         let annual = 1, hasAnnual = false;
@@ -687,8 +577,7 @@ function renderHeatmap(monthly) {
             const v = safeNumber(r[m]);
             if (!isNaN(v)) {
                 html += `<td style="background:${cellColor(v)}">${(v*100).toFixed(1)}%</td>`;
-                annual *= (1 + v);
-                hasAnnual = true;
+                annual *= (1 + v); hasAnnual = true;
             } else {
                 html += `<td style="background:${cellColor(NaN)}">–</td>`;
             }
@@ -701,32 +590,22 @@ function renderHeatmap(monthly) {
     wrap.innerHTML = html;
 }
 
-// ---------- 成分数 & 换手率 ----------
+// ---------- 成分 & 换手率 ----------
 function renderWeightTurnover(weight) {
     if (!weight || !weight.length) return;
     const labels = weight.map(r => r.date);
     const count  = weight.map(r => safeNumber(r['成分数']));
     const turn   = weight.map(r => safeNumber(r['换手率']) * 100);
-
     if (window._wtChart) window._wtChart.destroy();
     window._wtChart = new Chart(document.getElementById('weightTurnoverChart'), {
         type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: '成分数', data: count,
-                    borderColor: COLOR.gold,
-                    backgroundColor: 'rgba(240,194,127,0.10)',
-                    borderWidth: 2, pointRadius: 0, tension: 0.15, yAxisID: 'y',
-                },
-                {
-                    label: '换手率 %', data: turn,
-                    borderColor: COLOR.blue, borderWidth: 1.8,
-                    pointRadius: 0, tension: 0.15, yAxisID: 'y1',
-                },
-            ],
-        },
+        data: { labels, datasets: [
+            { label: '成分数', data: count, borderColor: COLOR.gold,
+              backgroundColor: 'rgba(240,194,127,0.10)', borderWidth: 2,
+              pointRadius: 0, tension: 0.15, yAxisID: 'y' },
+            { label: '换手率 %', data: turn, borderColor: COLOR.blue,
+              borderWidth: 1.8, pointRadius: 0, tension: 0.15, yAxisID: 'y1' },
+        ]},
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
@@ -734,11 +613,7 @@ function renderWeightTurnover(weight) {
             scales: {
                 x: commonAxis.x,
                 y: { position: 'left', ticks: { color: COLOR.tick }, grid: { color: COLOR.grid } },
-                y1: {
-                    position: 'right',
-                    ticks: { color: COLOR.tick, callback: v => v + '%' },
-                    grid: { display: false },
-                },
+                y1: { position: 'right', ticks: { color: COLOR.tick, callback: v => v + '%' }, grid: { display: false } },
             },
         },
     });
@@ -751,18 +626,14 @@ function renderConcentration(weight) {
     const cr5  = weight.map(r => safeNumber(r.CR5) * 100);
     const cr10 = weight.map(r => safeNumber(r.CR10) * 100);
     const hhi  = weight.map(r => safeNumber(r.HHI) * 100);
-
     if (window._ccChart) window._ccChart.destroy();
     window._ccChart = new Chart(document.getElementById('concentrationChart'), {
         type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'CR5',  data: cr5,  borderColor: COLOR.gold,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-                { label: 'CR10', data: cr10, borderColor: COLOR.green, borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-                { label: 'HHI×100', data: hhi, borderColor: COLOR.pink, borderWidth: 1.8, pointRadius: 0, tension: 0.15, borderDash: [4,4] },
-            ],
-        },
+        data: { labels, datasets: [
+            { label: 'CR5',  data: cr5,  borderColor: COLOR.gold,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+            { label: 'CR10', data: cr10, borderColor: COLOR.green, borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+            { label: 'HHI×100', data: hhi, borderColor: COLOR.pink, borderWidth: 1.8, pointRadius: 0, tension: 0.15, borderDash: [4,4] },
+        ]},
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
@@ -781,26 +652,16 @@ function renderFactorCap(factor) {
     const labels = factor.map(r => r.date);
     const cap    = factor.map(r => safeNumber(r.market_cap));
     const turn   = factor.map(r => safeNumber(r['近20日换手率(%)']));
-
     if (window._fcChart) window._fcChart.destroy();
     window._fcChart = new Chart(document.getElementById('factorCapChart'), {
         type: 'line',
-        data: {
-            labels,
-            datasets: [
-                {
-                    label: '市值(亿)', data: cap,
-                    borderColor: COLOR.gold,
-                    backgroundColor: 'rgba(240,194,127,0.10)',
-                    borderWidth: 2, pointRadius: 0, tension: 0.15, yAxisID: 'y', fill: true,
-                },
-                {
-                    label: '换手率 %', data: turn,
-                    borderColor: COLOR.blue, borderWidth: 1.8,
-                    pointRadius: 0, tension: 0.15, yAxisID: 'y1',
-                },
-            ],
-        },
+        data: { labels, datasets: [
+            { label: '市值(亿)', data: cap, borderColor: COLOR.gold,
+              backgroundColor: 'rgba(240,194,127,0.10)', borderWidth: 2,
+              pointRadius: 0, tension: 0.15, yAxisID: 'y', fill: true },
+            { label: '换手率 %', data: turn, borderColor: COLOR.blue,
+              borderWidth: 1.8, pointRadius: 0, tension: 0.15, yAxisID: 'y1' },
+        ]},
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
@@ -808,11 +669,7 @@ function renderFactorCap(factor) {
             scales: {
                 x: commonAxis.x,
                 y: { position: 'left', ticks: { color: COLOR.tick }, grid: { color: COLOR.grid } },
-                y1: {
-                    position: 'right',
-                    ticks: { color: COLOR.tick, callback: v => v + '%' },
-                    grid: { display: false },
-                },
+                y1: { position: 'right', ticks: { color: COLOR.tick, callback: v => v + '%' }, grid: { display: false } },
             },
         },
     });
@@ -825,18 +682,14 @@ function renderFactorValue(factor) {
     const pe = factor.map(r => safeNumber(r.pe_ratio));
     const pb = factor.map(r => safeNumber(r.pb_ratio));
     const ps = factor.map(r => safeNumber(r.ps_ratio));
-
     if (window._fvChart) window._fvChart.destroy();
     window._fvChart = new Chart(document.getElementById('factorValueChart'), {
         type: 'line',
-        data: {
-            labels,
-            datasets: [
-                { label: 'PE', data: pe, borderColor: COLOR.green, borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-                { label: 'PB', data: pb, borderColor: COLOR.gold,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-                { label: 'PS', data: ps, borderColor: COLOR.blue,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-            ],
-        },
+        data: { labels, datasets: [
+            { label: 'PE', data: pe, borderColor: COLOR.green, borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+            { label: 'PB', data: pb, borderColor: COLOR.gold,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+            { label: 'PS', data: ps, borderColor: COLOR.blue,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+        ]},
         options: {
             responsive: true, maintainAspectRatio: false,
             interaction: { mode: 'index', intersect: false },
@@ -858,7 +711,6 @@ function renderConstituent(cons, nav) {
     }
     const lastDate = (nav && nav.length) ? nav[nav.length - 1].date : '';
     if (lastDate) document.getElementById('constituentDate').textContent = `更新于 ${lastDate}`;
-
     let html = `<table><thead><tr>
         <th>#</th><th>代码</th><th>名称</th><th>交易所</th><th style="text-align:right;">权重</th>
     </tr></thead><tbody>`;
