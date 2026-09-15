@@ -156,12 +156,13 @@ body {
 
         <div class="kpi-grid" id="kpiGrid"></div>
 
+        <!-- 指数点位 + 回撤 -->
         <div class="chart-grid">
             <div class="chart-box full">
-                <div class="chart-title">📈 累计净值 &amp; 回撤 <span class="badge">左轴净值 · 右轴回撤</span></div>
+                <div class="chart-title">📈 指数点位 &amp; 回撤 <span class="badge">左轴点位 · 右轴回撤</span></div>
                 <div class="chart-wrapper tall"><canvas id="navChart"></canvas></div>
                 <div class="legend-inline">
-                    <span><span class="dot" style="background:#f0c27f;"></span>累计净值</span>
+                    <span><span class="dot" style="background:#f0c27f;"></span>指数点位</span>
                     <span><span class="dot" style="background:#fc6b6b;"></span>回撤(%)</span>
                 </div>
             </div>
@@ -363,14 +364,14 @@ function render(D) {
     if (nav.length) {
         const firstDate = nav[0].date;
         const lastDate  = nav[nav.length - 1].date;
-        const lastNAV   = safeNumber(nav[nav.length - 1]['累计净值']);
+        const lastPoint = safeNumber(nav[nav.length - 1]['点位']);
         document.getElementById('dateRange').textContent = `${firstDate} ~ ${lastDate}`;
         document.getElementById('latestPoint').textContent =
-            `最新净值 ${isNaN(lastNAV) ? '--' : lastNAV.toFixed(2)}`;
+            `最新点位 ${isNaN(lastPoint) ? '--' : lastPoint.toFixed(2)}`;
     }
 
     try { renderKPI(metrics); } catch (e) { console.error('KPI:', e); }
-    try { renderNAV(nav); } catch (e) { console.error('NAV:', e); }
+    try { renderIndexChart(nav); } catch (e) { console.error('IndexChart:', e); }
     try { renderAnnualBar(yearly); } catch (e) { console.error('AnnualBar:', e); }
     try { renderAnnualDD(yearly); } catch (e) { console.error('AnnualDD:', e); }
     try { renderAnnualTable(yearly); } catch (e) { console.error('AnnualTable:', e); }
@@ -413,24 +414,45 @@ function renderKPI(metrics) {
     });
 }
 
-// ---------- 净值 + 回撤 ----------
-function renderNAV(nav) {
+// ---------- 指数点位 + 回撤 ----------
+function renderIndexChart(nav) {
     if (!nav || !nav.length) return;
+
     const labels = nav.map(d => d.date);
-    const values = nav.map(d => safeNumber(d['累计净值']));
-    const dd     = nav.map(d => safeNumber(d['回撤']) * 100);
+    const points = nav.map(d => safeNumber(d['点位']));
+
+    // 回撤：优先读列；如果该列全空，从点位现算
+    let dd = nav.map(d => safeNumber(d['回撤']) * 100);
+    const hasDD = dd.some(v => !isNaN(v));
+    if (!hasDD) {
+        let peak = -Infinity;
+        dd = points.map(v => {
+            if (isNaN(v)) return NaN;
+            peak = Math.max(peak, v);
+            return (v / peak - 1) * 100;
+        });
+    }
+
     if (window._navChart) window._navChart.destroy();
     window._navChart = new Chart(document.getElementById('navChart'), {
         type: 'line',
         data: {
             labels,
             datasets: [
-                { label: '累计净值', data: values, borderColor: COLOR.gold,
-                  backgroundColor: 'rgba(240,194,127,0.10)', borderWidth: 2,
-                  pointRadius: 0, tension: 0.1, yAxisID: 'y', fill: true },
-                { label: '回撤 %', data: dd, borderColor: COLOR.red,
-                  backgroundColor: 'rgba(252,107,107,0.15)', borderWidth: 1.2,
-                  pointRadius: 0, tension: 0.1, yAxisID: 'y1', fill: true },
+                {
+                    label: '指数点位', data: points,
+                    borderColor: COLOR.gold,
+                    backgroundColor: 'rgba(240,194,127,0.10)',
+                    borderWidth: 2, pointRadius: 0, tension: 0.1,
+                    yAxisID: 'y', fill: true,
+                },
+                {
+                    label: '回撤 %', data: dd,
+                    borderColor: COLOR.red,
+                    backgroundColor: 'rgba(252,107,107,0.15)',
+                    borderWidth: 1.2, pointRadius: 0, tension: 0.1,
+                    yAxisID: 'y1', fill: true,
+                },
             ],
         },
         options: {
@@ -439,11 +461,17 @@ function renderNAV(nav) {
             plugins: { legend: { display: false } },
             scales: {
                 x: commonAxis.x,
-                y: { position: 'left', ticks: { color: COLOR.tick }, grid: { color: COLOR.grid },
-                     title: { display: true, text: '净值', color: COLOR.tick } },
-                y1: { position: 'right', ticks: { color: COLOR.tick, callback: v => v + '%' },
-                      grid: { display: false },
-                      title: { display: true, text: '回撤', color: COLOR.tick } },
+                y: {
+                    position: 'left',
+                    ticks: { color: COLOR.tick }, grid: { color: COLOR.grid },
+                    title: { display: true, text: '指数点位', color: COLOR.tick },
+                },
+                y1: {
+                    position: 'right',
+                    ticks: { color: COLOR.tick, callback: v => v + '%' },
+                    grid: { display: false },
+                    title: { display: true, text: '回撤', color: COLOR.tick },
+                },
             },
         },
     });
