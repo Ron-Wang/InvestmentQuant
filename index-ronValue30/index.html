@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RON微盘价值30 · 指数看板</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<!-- 数据脚本：优先使用它，file:// 也能加载 -->
+<script src="ron_data.js" onerror="window.__RON_DATA_JS_FAILED__=true"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body {
@@ -101,7 +103,6 @@ body {
 .flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; }
 .hidden { display: none !important; }
 
-/* 月度热力图 */
 .heatmap-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .heatmap-table th {
     padding: 6px 8px; color: #7a8aa0; font-size: 11px;
@@ -116,6 +117,22 @@ body {
     background: #141b26; color: #f0c27f; font-weight: 600;
     font-family: inherit; text-align: left;
 }
+
+.err-box {
+    background: rgba(252,107,107,0.08);
+    border: 1px solid rgba(252,107,107,0.4);
+    border-radius: 12px;
+    padding: 20px 24px;
+    color: #fc6b6b;
+    margin-bottom: 20px;
+}
+.err-box h3 { font-size: 16px; margin-bottom: 10px; }
+.err-box p, .err-box li { font-size: 13px; color: #c8d8e8; line-height: 1.7; }
+.err-box code {
+    background: #1f2a3a; padding: 2px 8px; border-radius: 6px;
+    color: #f0c27f; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+}
+.err-box ul { padding-left: 20px; margin-top: 8px; }
 
 @media (max-width: 900px) {
     .chart-grid { grid-template-columns: 1fr; }
@@ -136,24 +153,25 @@ body {
         <div>正在加载 RONVALUE30 指数数据 ...</div>
     </div>
 
+    <div id="errorBox" class="err-box hidden"></div>
+
     <div id="dashboard" class="hidden">
         <header class="header">
             <div class="header-left">
                 <h1>🪙 RON微盘价值30 · 指数看板</h1>
                 <div class="subtitle">
                     <span>RONVALUE30</span>
-                    <span>📅 <span id="dateRange"></span></span>
-                    <span id="latestPoint"></span>
+                    <span>📅 <span id="dateRange">--</span></span>
+                    <span id="latestPoint">--</span>
                 </div>
             </div>
             <div class="header-right">
-                <div>微盘 · 价值 · 等权 30 <span class="highlight">成分</span></div>
+                <div>微盘 · 价值 · 30 <span class="highlight">成分</span></div>
             </div>
         </header>
 
         <div class="kpi-grid" id="kpiGrid"></div>
 
-        <!-- 净值 + 回撤 -->
         <div class="chart-grid">
             <div class="chart-box full">
                 <div class="chart-title">📈 累计净值 &amp; 回撤 <span class="badge">左轴净值 · 右轴回撤</span></div>
@@ -165,7 +183,6 @@ body {
             </div>
         </div>
 
-        <!-- 年度收益 / 年度回撤 -->
         <div class="chart-grid">
             <div class="chart-box">
                 <div class="chart-title">📊 年度收益率</div>
@@ -177,25 +194,26 @@ body {
             </div>
         </div>
 
-        <!-- 年度明细 -->
         <div class="chart-box full" style="margin-bottom:28px;">
             <div class="flex-between">
                 <div class="chart-title">📋 年度业绩明细</div>
                 <span class="text-muted">交易日数 · 风险调整指标</span>
             </div>
-            <div class="table-wrap" id="annualTableWrap"></div>
+            <div class="table-wrap" id="annualTableWrap">
+                <div class="text-muted" style="padding:12px;">加载中...</div>
+            </div>
         </div>
 
-        <!-- 月度热力图 -->
         <div class="chart-box full" style="margin-bottom:28px;">
             <div class="flex-between">
                 <div class="chart-title">🔥 月度收益热力图</div>
                 <span class="text-muted">绿色为盈利 · 红色为亏损</span>
             </div>
-            <div class="table-wrap" id="heatmapWrap"></div>
+            <div class="table-wrap" id="heatmapWrap">
+                <div class="text-muted" style="padding:12px;">加载中...</div>
+            </div>
         </div>
 
-        <!-- 权重 & 集中度 -->
         <div class="chart-grid">
             <div class="chart-box">
                 <div class="chart-title">🧩 成分数量 &amp; 换手率</div>
@@ -209,14 +227,13 @@ body {
                 <div class="chart-title">🎯 权重集中度</div>
                 <div class="chart-wrapper"><canvas id="concentrationChart"></canvas></div>
                 <div class="legend-inline">
-                    <span><span class="dot" style="background:#f0c27f;"></span>CR5</span>
-                    <span><span class="dot" style="background:#4cd9a0;"></span>CR10</span>
-                    <span><span class="dot" style="background:#fc5c7d;"></span>HHI</span>
+                    <span><span class="dot" style="background:#f0c27f;"></span>CR5 %</span>
+                    <span><span class="dot" style="background:#4cd9a0;"></span>CR10 %</span>
+                    <span><span class="dot" style="background:#fc5c7d;"></span>HHI × 100</span>
                 </div>
             </div>
         </div>
 
-        <!-- 因子暴露 -->
         <div class="chart-grid">
             <div class="chart-box">
                 <div class="chart-title">⚖️ 市值 &amp; 换手率暴露 <span class="badge">截面均值</span></div>
@@ -237,20 +254,21 @@ body {
             </div>
         </div>
 
-        <!-- 最新成分 -->
         <div class="chart-box full">
             <div class="flex-between">
                 <div class="chart-title">📌 最新一期成分股</div>
                 <span class="text-muted" id="constituentDate"></span>
             </div>
-            <div class="table-wrap" id="constituentTableWrap"></div>
+            <div class="table-wrap" id="constituentTableWrap">
+                <div class="text-muted" style="padding:12px;">加载中...</div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
 // ============================================================
-// CSV 解析
+// 工具：CSV 解析（用于 fetch 回退）
 // ============================================================
 function parseCSV(text) {
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
@@ -273,129 +291,228 @@ function parseCSV(text) {
 }
 
 // ============================================================
-// 通用配色
+// 配色
 // ============================================================
 const COLOR = {
-    gold:   '#f0c27f',
-    blue:   '#4a90d9',
-    pink:   '#fc5c7d',
-    green:  '#4cd9a0',
-    red:    '#fc6b6b',
-    grid:   '#1a222f',
-    tick:   '#8899b0',
+    gold:  '#f0c27f',
+    blue:  '#4a90d9',
+    pink:  '#fc5c7d',
+    green: '#4cd9a0',
+    red:   '#fc6b6b',
+    grid:  '#1a222f',
+    tick:  '#8899b0',
 };
-
 const commonAxis = {
     x: { ticks: { maxTicksLimit: 12, color: COLOR.tick }, grid: { color: COLOR.grid } },
     y: { ticks: { color: COLOR.tick }, grid: { color: COLOR.grid } },
 };
 
-// ============================================================
-// 加载文件
-// ============================================================
-const files = [
-    'ron_metrics.csv',
-    'ron_nav.csv',
-    'ron_yearly_metrics.csv',
-    'ron_monthly_pivot.csv',
-    'ron_weight_stats.csv',
-    'ron_factor_stats.csv',
-    'ron_latest_constituents.csv',
-];
-const loaded = {};
+function safeNumber(v) {
+    if (v === null || v === undefined || v === '') return NaN;
+    const n = Number(v);
+    return isNaN(n) ? NaN : n;
+}
 
-Promise.all(files.map(f => fetch(f).then(r => {
-    if (!r.ok) throw new Error(`HTTP ${r.status} — ${f}`);
-    return r.text();
-}).then(t => { loaded[f.replace('.csv','')] = parseCSV(t); })))
-.then(() => {
+function showError(html) {
+    const box = document.getElementById('errorBox');
+    box.innerHTML = html;
+    box.classList.remove('hidden');
     document.getElementById('loading').classList.add('hidden');
-    document.getElementById('dashboard').classList.remove('hidden');
-    render(loaded);
-})
-.catch(err => {
-    document.getElementById('loading').innerHTML = `
-        <div style="color:#fc6b6b;font-size:20px;">⚠️ 数据加载失败</div>
-        <div style="color:#8899b0;margin-top:12px;">${err.message}</div>
-        <div style="color:#5a6a80;margin-top:8px;font-size:14px;">
-            请确保以下 CSV 与 HTML 在同一目录：<br>
-            ron_metrics.csv / ron_nav.csv / ron_yearly_metrics.csv /
-            ron_monthly_pivot.csv / ron_weight_stats.csv /
-            ron_factor_stats.csv / ron_latest_constituents.csv
-        </div>`;
-    console.error(err);
-});
+}
+
+// ============================================================
+// 数据加载：优先 window.RON_DATA，其次 fetch CSV
+// ============================================================
+function normalizeFromRonData(D) {
+    return {
+        metrics:     D.metrics     || [],
+        nav:         D.nav         || [],
+        yearly:      D.yearly      || [],
+        monthly:     D.monthly     || {},   // 对象 {year: {"1月":..}}
+        weight:      D.weight      || [],
+        factor:      D.factor      || [],
+        constituent: D.constituent || [],
+    };
+}
+
+function loadFromCSVFallback() {
+    const files = [
+        'ron_metrics.csv',
+        'ron_nav.csv',
+        'ron_yearly_metrics.csv',
+        'ron_monthly_pivot.csv',
+        'ron_weight_stats.csv',
+        'ron_factor_stats.csv',
+        'ron_latest_constituents.csv',
+    ];
+    return Promise.all(files.map(f =>
+        fetch(f).then(r => {
+            if (!r.ok) throw new Error(`HTTP ${r.status} — ${f}`);
+            return r.text();
+        }).then(t => ({ f, t }))
+    )).then(arr => {
+        const map = {};
+        arr.forEach(({ f, t }) => { map[f.replace('.csv','')] = parseCSV(t); });
+
+        // monthly_pivot 是 CSV，需要转成对象
+        const monthlyObj = {};
+        (map['ron_monthly_pivot'] || []).forEach(row => {
+            const y = row.year;
+            const o = {};
+            Object.keys(row).forEach(k => { if (k !== 'year') o[k] = row[k]; });
+            monthlyObj[y] = o;
+        });
+
+        return {
+            metrics:     map['ron_metrics']             || [],
+            nav:         map['ron_nav']                 || [],
+            yearly:      map['ron_yearly_metrics']      || [],
+            monthly:     monthlyObj,
+            weight:      map['ron_weight_stats']        || [],
+            factor:      map['ron_factor_stats']        || [],
+            constituent: map['ron_latest_constituents'] || [],
+        };
+    });
+}
+
+// ============================================================
+// 启动
+// ============================================================
+(function bootstrap() {
+    const D = window.RON_DATA;
+
+    if (D && typeof D === 'object') {
+        console.log('[RON] 使用 ron_data.js 数据');
+        // ron_data.js 的字段名已经是 {metrics, nav, yearly, monthly, weight, factor, constituent}
+        const data = normalizeFromRonData(D);
+        if (!data.nav.length && !data.metrics.length) {
+            showError(`
+                <h3>⚠️ ron_data.js 内容为空</h3>
+                <p>文件存在但数据结构不完整。请检查 <code>prepare_ron_html_data.py</code> 是否成功运行。</p>
+            `);
+            return;
+        }
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('dashboard').classList.remove('hidden');
+        try { render(data); } catch (e) {
+            console.error(e);
+            showError(`<h3>⚠️ 渲染出错</h3><p>${e.message}</p>`);
+        }
+        return;
+    }
+
+    // 回退：fetch CSV
+    console.log('[RON] ron_data.js 未加载，尝试 fetch CSV');
+    loadFromCSVFallback()
+        .then(data => {
+            if (!data.nav.length) {
+                throw new Error('ron_nav.csv 为空或不存在');
+            }
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            render(data);
+        })
+        .catch(err => {
+            console.error(err);
+            showError(`
+                <h3>⚠️ 数据加载失败</h3>
+                <p>${err.message}</p>
+                <p style="margin-top:10px;">请二选一：</p>
+                <ul>
+                    <li><b>方式 A（推荐）</b>：运行 <code>python prepare_ron_html_data.py</code> 生成 <code>ron_data.js</code>，与 HTML 放同目录，直接双击打开。</li>
+                    <li><b>方式 B</b>：把 7 个 <code>ron_*.csv</code> 放同目录，然后在该目录执行 <code>python -m http.server 8000</code>，访问 <code>http://localhost:8000/index.html</code>。</li>
+                </ul>
+            `);
+        });
+})();
 
 // ============================================================
 // 主渲染
 // ============================================================
 function render(D) {
-    const metrics = D.ron_metrics || [];
-    const nav     = D.ron_nav || [];
-    const yearly  = D.ron_yearly_metrics || [];
-    const monthly = D.ron_monthly_pivot || [];
-    const wstats  = D.ron_weight_stats || [];
-    const fstats  = D.ron_factor_stats || [];
-    const cons    = D.ron_latest_constituents || [];
-
-    if (!nav.length) { alert('RONVALUE30 净值数据为空'); return; }
+    const { metrics, nav, yearly, monthly, weight, factor, constituent } = D;
 
     // ---------- 头部 ----------
-    const firstDate = nav[0].date;
-    const lastDate  = nav[nav.length - 1].date;
-    const lastNAV   = nav[nav.length - 1].累计净值;
-    document.getElementById('dateRange').textContent = `${firstDate} ~ ${lastDate}`;
-    document.getElementById('latestPoint').textContent = `最新净值 ${lastNAV.toFixed(2)}`;
+    if (nav.length) {
+        const firstDate = nav[0].date;
+        const lastDate  = nav[nav.length - 1].date;
+        const lastNAV   = safeNumber(nav[nav.length - 1]['累计净值'] ?? nav[nav.length - 1]['nav']);
+        document.getElementById('dateRange').textContent = `${firstDate} ~ ${lastDate}`;
+        document.getElementById('latestPoint').textContent =
+            `最新净值 ${isNaN(lastNAV) ? '--' : lastNAV.toFixed(2)}`;
+    }
 
     // ---------- KPI ----------
+    renderKPI(metrics);
+
+    // ---------- 各图 ----------
+    try { renderNAV(nav); } catch (e) { console.error('NAV:', e); }
+    try { renderAnnualBar(yearly); } catch (e) { console.error('AnnualBar:', e); }
+    try { renderAnnualDD(yearly); } catch (e) { console.error('AnnualDD:', e); }
+    try { renderAnnualTable(yearly); } catch (e) { console.error('AnnualTable:', e); }
+    try { renderHeatmap(monthly); } catch (e) { console.error('Heatmap:', e); }
+    try { renderWeightTurnover(weight); } catch (e) { console.error('Weight:', e); }
+    try { renderConcentration(weight); } catch (e) { console.error('Concentration:', e); }
+    try { renderFactorCap(factor); } catch (e) { console.error('FactorCap:', e); }
+    try { renderFactorValue(factor); } catch (e) { console.error('FactorValue:', e); }
+    try { renderConstituent(constituent, nav); } catch (e) { console.error('Constituent:', e); }
+}
+
+// ---------- KPI ----------
+function renderKPI(metrics) {
     const kpiMap = {};
-    metrics.forEach(r => kpiMap[r['指标']] = r['数值']);
-    const kpiConfig = [
-        { key: '总收益率',   label: '总收益率',   fmt: v => (v*100).toFixed(1)+'%' },
-        { key: '年化收益率', label: '年化收益',   fmt: v => (v*100).toFixed(1)+'%' },
-        { key: '年化波动率', label: '年化波动',   fmt: v => (v*100).toFixed(1)+'%' },
-        { key: '夏普比率',   label: '夏普比率',   fmt: v => v.toFixed(2) },
-        { key: '最大回撤',   label: '最大回撤',   fmt: v => (v*100).toFixed(1)+'%' },
-        { key: 'Calmar比率', label: 'Calmar',     fmt: v => v.toFixed(2) },
+    (metrics || []).forEach(r => {
+        kpiMap[r['指标']] = safeNumber(r['数值']);
+    });
+    const cfg = [
+        { key: '总收益率',   label: '总收益率',  fmt: v => (v*100).toFixed(1)+'%' },
+        { key: '年化收益率', label: '年化收益',  fmt: v => (v*100).toFixed(1)+'%' },
+        { key: '年化波动率', label: '年化波动',  fmt: v => (v*100).toFixed(1)+'%' },
+        { key: '夏普比率',   label: '夏普比率',  fmt: v => v.toFixed(2) },
+        { key: '最大回撤',   label: '最大回撤',  fmt: v => (v*100).toFixed(1)+'%' },
+        { key: 'Calmar比率', label: 'Calmar',    fmt: v => v.toFixed(2) },
     ];
-    const kpiGrid = document.getElementById('kpiGrid');
-    kpiGrid.innerHTML = '';
-    kpiConfig.forEach(cfg => {
-        const v = kpiMap[cfg.key];
+    const grid = document.getElementById('kpiGrid');
+    grid.innerHTML = '';
+    cfg.forEach(c => {
+        const v = kpiMap[c.key];
         let cls = 'neutral';
-        if (v !== undefined) {
-            if (cfg.key === '最大回撤') cls = v < 0 ? 'negative' : 'positive';
-            else if (['总收益率','年化收益率','夏普比率','Calmar比率'].includes(cfg.key))
+        if (!isNaN(v)) {
+            if (c.key === '最大回撤') cls = v < 0 ? 'negative' : 'positive';
+            else if (['总收益率','年化收益率','夏普比率','Calmar比率'].includes(c.key))
                 cls = v > 0 ? 'positive' : 'negative';
         }
         const div = document.createElement('div');
         div.className = 'kpi-card';
         div.innerHTML = `
-            <div class="kpi-label">${cfg.label}</div>
-            <div class="kpi-value ${cls}">${v !== undefined ? cfg.fmt(v) : '--'}</div>`;
-        kpiGrid.appendChild(div);
+            <div class="kpi-label">${c.label}</div>
+            <div class="kpi-value ${cls}">${isNaN(v) ? '--' : c.fmt(v)}</div>`;
+        grid.appendChild(div);
     });
+}
 
-    // ---------- 净值 + 回撤 ----------
-    const navLabels = nav.map(d => d.date);
-    const navValues = nav.map(d => d.累计净值);
-    const ddValues  = nav.map(d => d.回撤 * 100);
+// ---------- 净值 + 回撤 ----------
+function renderNAV(nav) {
+    if (!nav || !nav.length) return;
+    const labels = nav.map(d => d.date);
+    const values = nav.map(d => safeNumber(d['累计净值']));
+    const dd     = nav.map(d => safeNumber(d['回撤']) * 100);
 
     if (window._navChart) window._navChart.destroy();
     window._navChart = new Chart(document.getElementById('navChart'), {
         type: 'line',
         data: {
-            labels: navLabels,
+            labels,
             datasets: [
                 {
-                    label: '累计净值', data: navValues,
+                    label: '累计净值', data: values,
                     borderColor: COLOR.gold,
                     backgroundColor: 'rgba(240,194,127,0.10)',
                     borderWidth: 2, pointRadius: 0, tension: 0.1,
                     yAxisID: 'y', fill: true,
                 },
                 {
-                    label: '回撤 %', data: ddValues,
+                    label: '回撤 %', data: dd,
                     borderColor: COLOR.red,
                     backgroundColor: 'rgba(252,107,107,0.15)',
                     borderWidth: 1.2, pointRadius: 0, tension: 0.1,
@@ -423,11 +540,13 @@ function render(D) {
             },
         },
     });
+}
 
-    // ---------- 年度柱状图 ----------
-    const years = yearly.map(r => String(r.年份));
-    const annualRet = yearly.map(r => r.总收益率 * 100);
-    const annualDD  = yearly.map(r => r.最大回撤 * 100);
+// ---------- 年度收益柱 ----------
+function renderAnnualBar(yearly) {
+    if (!yearly || !yearly.length) return;
+    const years = yearly.map(r => String(r['年份']));
+    const ret   = yearly.map(r => safeNumber(r['总收益率']) * 100);
 
     if (window._barChart) window._barChart.destroy();
     window._barChart = new Chart(document.getElementById('annualBarChart'), {
@@ -435,10 +554,9 @@ function render(D) {
         data: {
             labels: years,
             datasets: [{
-                data: annualRet,
-                backgroundColor: annualRet.map(v => v >= 0
-                    ? 'rgba(76,217,160,0.7)' : 'rgba(252,107,107,0.7)'),
-                borderColor: annualRet.map(v => v >= 0 ? COLOR.green : COLOR.red),
+                data: ret,
+                backgroundColor: ret.map(v => v >= 0 ? 'rgba(76,217,160,0.7)' : 'rgba(252,107,107,0.7)'),
+                borderColor:     ret.map(v => v >= 0 ? COLOR.green : COLOR.red),
                 borderWidth: 1.5,
             }],
         },
@@ -451,6 +569,13 @@ function render(D) {
             },
         },
     });
+}
+
+// ---------- 年度最大回撤 ----------
+function renderAnnualDD(yearly) {
+    if (!yearly || !yearly.length) return;
+    const years = yearly.map(r => String(r['年份']));
+    const dd    = yearly.map(r => safeNumber(r['最大回撤']) * 100);
 
     if (window._ddChart) window._ddChart.destroy();
     window._ddChart = new Chart(document.getElementById('annualDrawdownChart'), {
@@ -458,7 +583,7 @@ function render(D) {
         data: {
             labels: years,
             datasets: [{
-                data: annualDD,
+                data: dd,
                 backgroundColor: 'rgba(252,107,107,0.6)',
                 borderColor: COLOR.red, borderWidth: 1.5,
             }],
@@ -472,50 +597,131 @@ function render(D) {
             },
         },
     });
+}
 
-    // ---------- 年度明细表 ----------
-    let tableHtml = `<table><thead><tr>
+// ---------- 年度明细表 ----------
+function renderAnnualTable(yearly) {
+    const wrap = document.getElementById('annualTableWrap');
+    if (!yearly || !yearly.length) {
+        wrap.innerHTML = '<div class="text-muted" style="padding:12px;">暂无年度数据</div>';
+        return;
+    }
+    let html = `<table><thead><tr>
         <th>年份</th><th>总收益率</th><th>年化收益率</th><th>年化波动率</th>
         <th>夏普比率</th><th>最大回撤</th><th>Calmar</th><th>交易日</th>
     </tr></thead><tbody>`;
     yearly.forEach(r => {
-        const tr = r.总收益率, ar = r.年化收益率, av = r.年化波动率;
-        const sp = r.夏普比率, md = r.最大回撤, cm = r.Calmar比率, dy = r.交易日数;
-        tableHtml += `<tr>
-            <td>${r.年份}</td>
-            <td class="num ${tr>=0?'pos':'neg'}">${(tr*100).toFixed(1)}%</td>
-            <td class="num ${ar>=0?'pos':'neg'}">${(ar*100).toFixed(1)}%</td>
-            <td class="num">${(av*100).toFixed(1)}%</td>
-            <td class="num">${sp.toFixed(2)}</td>
-            <td class="num neg">${(md*100).toFixed(1)}%</td>
-            <td class="num">${cm.toFixed(2)}</td>
-            <td class="num">${dy}</td>
+        const tr = safeNumber(r['总收益率']);
+        const ar = safeNumber(r['年化收益率']);
+        const av = safeNumber(r['年化波动率']);
+        const sp = safeNumber(r['夏普比率']);
+        const md = safeNumber(r['最大回撤']);
+        const cm = safeNumber(r['Calmar比率']);
+        const dy = r['交易日数'];
+        const f = (v, pct=true) => isNaN(v) ? '--' : (pct ? (v*100).toFixed(1)+'%' : v.toFixed(2));
+        html += `<tr>
+            <td>${r['年份']}</td>
+            <td class="num ${tr>=0?'pos':'neg'}">${f(tr)}</td>
+            <td class="num ${ar>=0?'pos':'neg'}">${f(ar)}</td>
+            <td class="num">${f(av)}</td>
+            <td class="num">${f(sp, false)}</td>
+            <td class="num neg">${f(md)}</td>
+            <td class="num">${f(cm, false)}</td>
+            <td class="num">${dy ?? '--'}</td>
         </tr>`;
     });
-    tableHtml += '</tbody></table>';
-    document.getElementById('annualTableWrap').innerHTML = tableHtml;
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+}
 
-    // ---------- 月度热力图 ----------
-    renderHeatmap(monthly);
+// ---------- 月度热力图 ----------
+function renderHeatmap(monthly) {
+    const wrap = document.getElementById('heatmapWrap');
+    if (!monthly) {
+        wrap.innerHTML = '<div class="text-muted" style="padding:12px;">暂无月度数据</div>';
+        return;
+    }
 
-    // ---------- 成分 & 换手率 ----------
-    const wDates = wstats.map(r => r.date);
-    const wCount = wstats.map(r => r.成分数);
-    const wTurn  = wstats.map(r => r.换手率 * 100);
+    // 统一转成数组 [{year, "1月":.., ...}, ...]
+    const rows = [];
+    if (Array.isArray(monthly)) {
+        monthly.forEach(r => rows.push(Object.assign({}, r)));
+    } else {
+        Object.keys(monthly).forEach(y => {
+            const r = Object.assign({}, monthly[y]);
+            r.year = y;
+            rows.push(r);
+        });
+    }
+    rows.sort((a, b) => String(a.year).localeCompare(String(b.year)));
+
+    if (!rows.length) {
+        wrap.innerHTML = '<div class="text-muted" style="padding:12px;">暂无月度数据</div>';
+        return;
+    }
+
+    const monthKeys = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+
+    let maxAbs = 0;
+    rows.forEach(r => monthKeys.forEach(m => {
+        const v = safeNumber(r[m]);
+        if (!isNaN(v)) maxAbs = Math.max(maxAbs, Math.abs(v));
+    }));
+    if (maxAbs === 0) maxAbs = 0.01;
+
+    const cellColor = v => {
+        if (isNaN(v)) return 'rgba(31,42,58,0.4)';
+        const intensity = Math.min(1, Math.abs(v) / maxAbs);
+        const alpha = 0.10 + intensity * 0.65;
+        return v >= 0 ? `rgba(76,217,160,${alpha})` : `rgba(252,107,107,${alpha})`;
+    };
+
+    let html = `<table class="heatmap-table"><thead><tr><th>年份</th>`;
+    monthKeys.forEach(m => html += `<th>${m}</th>`);
+    html += `<th>全年</th></tr></thead><tbody>`;
+
+    rows.forEach(r => {
+        html += `<tr><td class="year-cell">${r.year}</td>`;
+        let annual = 1, hasAnnual = false;
+        monthKeys.forEach(m => {
+            const v = safeNumber(r[m]);
+            if (!isNaN(v)) {
+                html += `<td style="background:${cellColor(v)}">${(v*100).toFixed(1)}%</td>`;
+                annual *= (1 + v);
+                hasAnnual = true;
+            } else {
+                html += `<td style="background:${cellColor(NaN)}">–</td>`;
+            }
+        });
+        const ar = hasAnnual ? annual - 1 : NaN;
+        html += `<td style="background:${cellColor(ar)};font-weight:600;">${isNaN(ar)?'–':(ar*100).toFixed(1)+'%'}</td>`;
+        html += `</tr>`;
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+}
+
+// ---------- 成分数 & 换手率 ----------
+function renderWeightTurnover(weight) {
+    if (!weight || !weight.length) return;
+    const labels = weight.map(r => r.date);
+    const count  = weight.map(r => safeNumber(r['成分数']));
+    const turn   = weight.map(r => safeNumber(r['换手率']) * 100);
 
     if (window._wtChart) window._wtChart.destroy();
     window._wtChart = new Chart(document.getElementById('weightTurnoverChart'), {
         type: 'line',
         data: {
-            labels: wDates,
+            labels,
             datasets: [
                 {
-                    label: '成分数', data: wCount,
-                    borderColor: COLOR.gold, backgroundColor: 'rgba(240,194,127,0.10)',
+                    label: '成分数', data: count,
+                    borderColor: COLOR.gold,
+                    backgroundColor: 'rgba(240,194,127,0.10)',
                     borderWidth: 2, pointRadius: 0, tension: 0.15, yAxisID: 'y',
                 },
                 {
-                    label: '换手率 %', data: wTurn,
+                    label: '换手率 %', data: turn,
                     borderColor: COLOR.blue, borderWidth: 1.8,
                     pointRadius: 0, tension: 0.15, yAxisID: 'y1',
                 },
@@ -536,21 +742,25 @@ function render(D) {
             },
         },
     });
+}
 
-    // ---------- 集中度 ----------
-    const cr5  = wstats.map(r => r.CR5  * 100);
-    const cr10 = wstats.map(r => r.CR10 * 100);
-    const hhi  = wstats.map(r => r.HHI  * 100);
+// ---------- 集中度 ----------
+function renderConcentration(weight) {
+    if (!weight || !weight.length) return;
+    const labels = weight.map(r => r.date);
+    const cr5  = weight.map(r => safeNumber(r.CR5) * 100);
+    const cr10 = weight.map(r => safeNumber(r.CR10) * 100);
+    const hhi  = weight.map(r => safeNumber(r.HHI) * 100);
 
     if (window._ccChart) window._ccChart.destroy();
     window._ccChart = new Chart(document.getElementById('concentrationChart'), {
         type: 'line',
         data: {
-            labels: wDates,
+            labels,
             datasets: [
                 { label: 'CR5',  data: cr5,  borderColor: COLOR.gold,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
                 { label: 'CR10', data: cr10, borderColor: COLOR.green, borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-                { label: 'HHI',  data: hhi,  borderColor: COLOR.pink,  borderWidth: 1.8, pointRadius: 0, tension: 0.15, borderDash: [4,4] },
+                { label: 'HHI×100', data: hhi, borderColor: COLOR.pink, borderWidth: 1.8, pointRadius: 0, tension: 0.15, borderDash: [4,4] },
             ],
         },
         options: {
@@ -563,25 +773,29 @@ function render(D) {
             },
         },
     });
+}
 
-    // ---------- 因子：市值 & 换手率 ----------
-    const fDates = fstats.map(r => r.date);
-    const fCap   = fstats.map(r => r.market_cap);
-    const fTurn  = fstats.map(r => r['近20日换手率(%)']);
+// ---------- 因子：市值 & 换手率 ----------
+function renderFactorCap(factor) {
+    if (!factor || !factor.length) return;
+    const labels = factor.map(r => r.date);
+    const cap    = factor.map(r => safeNumber(r.market_cap));
+    const turn   = factor.map(r => safeNumber(r['近20日换手率(%)']));
 
     if (window._fcChart) window._fcChart.destroy();
     window._fcChart = new Chart(document.getElementById('factorCapChart'), {
         type: 'line',
         data: {
-            labels: fDates,
+            labels,
             datasets: [
                 {
-                    label: '市值(亿)', data: fCap,
-                    borderColor: COLOR.gold, backgroundColor: 'rgba(240,194,127,0.10)',
+                    label: '市值(亿)', data: cap,
+                    borderColor: COLOR.gold,
+                    backgroundColor: 'rgba(240,194,127,0.10)',
                     borderWidth: 2, pointRadius: 0, tension: 0.15, yAxisID: 'y', fill: true,
                 },
                 {
-                    label: '换手率 %', data: fTurn,
+                    label: '换手率 %', data: turn,
                     borderColor: COLOR.blue, borderWidth: 1.8,
                     pointRadius: 0, tension: 0.15, yAxisID: 'y1',
                 },
@@ -602,21 +816,25 @@ function render(D) {
             },
         },
     });
+}
 
-    // ---------- 因子：估值 ----------
-    const fPE = fstats.map(r => r.pe_ratio);
-    const fPB = fstats.map(r => r.pb_ratio);
-    const fPS = fstats.map(r => r.ps_ratio);
+// ---------- 因子：估值 ----------
+function renderFactorValue(factor) {
+    if (!factor || !factor.length) return;
+    const labels = factor.map(r => r.date);
+    const pe = factor.map(r => safeNumber(r.pe_ratio));
+    const pb = factor.map(r => safeNumber(r.pb_ratio));
+    const ps = factor.map(r => safeNumber(r.ps_ratio));
 
     if (window._fvChart) window._fvChart.destroy();
     window._fvChart = new Chart(document.getElementById('factorValueChart'), {
         type: 'line',
         data: {
-            labels: fDates,
+            labels,
             datasets: [
-                { label: 'PE', data: fPE, borderColor: COLOR.green, borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-                { label: 'PB', data: fPB, borderColor: COLOR.gold,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
-                { label: 'PS', data: fPS, borderColor: COLOR.blue,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+                { label: 'PE', data: pe, borderColor: COLOR.green, borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+                { label: 'PB', data: pb, borderColor: COLOR.gold,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
+                { label: 'PS', data: ps, borderColor: COLOR.blue,  borderWidth: 1.8, pointRadius: 0, tension: 0.15 },
             ],
         },
         options: {
@@ -629,80 +847,33 @@ function render(D) {
             },
         },
     });
-
-    // ---------- 最新成分表 ----------
-    if (cons.length) {
-        document.getElementById('constituentDate').textContent = `更新于 ${lastDate}`;
-        let ch = `<table><thead><tr>
-            <th>#</th><th>代码</th><th>名称</th><th>交易所</th><th style="text-align:right;">权重</th>
-        </tr></thead><tbody>`;
-        cons.forEach((c, i) => {
-            const w = Number(c['权重%'] || 0);
-            ch += `<tr>
-                <td>${i+1}</td>
-                <td>${c.代码}</td>
-                <td>${c.名称}</td>
-                <td class="text-muted">${c.交易所 || ''}</td>
-                <td class="num">${w.toFixed(2)}%</td>
-            </tr>`;
-        });
-        ch += '</tbody></table>';
-        document.getElementById('constituentTableWrap').innerHTML = ch;
-    }
 }
 
-// ============================================================
-// 月度热力图渲染
-// ============================================================
-function renderHeatmap(rows) {
-    if (!rows || !rows.length) {
-        document.getElementById('heatmapWrap').innerHTML =
-            '<div class="text-muted" style="padding:12px;">暂无月度数据</div>';
+// ---------- 最新成分 ----------
+function renderConstituent(cons, nav) {
+    const wrap = document.getElementById('constituentTableWrap');
+    if (!cons || !cons.length) {
+        wrap.innerHTML = '<div class="text-muted" style="padding:12px;">暂无成分数据</div>';
         return;
     }
-    const monthKeys = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-    // 找最大绝对值
-    let maxAbs = 0;
-    rows.forEach(r => monthKeys.forEach(m => {
-        const v = r[m];
-        if (typeof v === 'number' && !isNaN(v)) maxAbs = Math.max(maxAbs, Math.abs(v));
-    }));
-    if (maxAbs === 0) maxAbs = 0.01;
+    const lastDate = (nav && nav.length) ? nav[nav.length - 1].date : '';
+    if (lastDate) document.getElementById('constituentDate').textContent = `更新于 ${lastDate}`;
 
-    const cellColor = v => {
-        if (typeof v !== 'number' || isNaN(v)) return 'rgba(31,42,58,0.4)';
-        const intensity = Math.min(1, Math.abs(v) / maxAbs);
-        const alpha = 0.10 + intensity * 0.65;
-        return v >= 0
-            ? `rgba(76,217,160,${alpha})`
-            : `rgba(252,107,107,${alpha})`;
-    };
-
-    let html = `<table class="heatmap-table"><thead><tr><th>年份</th>`;
-    monthKeys.forEach(m => html += `<th>${m}</th>`);
-    html += `<th>全年</th></tr></thead><tbody>`;
-
-    rows.forEach(r => {
-        html += `<tr><td class="year-cell">${r.year}</td>`;
-        let annual = 1;
-        let hasAnnual = false;
-        monthKeys.forEach(m => {
-            const v = r[m];
-            if (typeof v === 'number' && !isNaN(v)) {
-                html += `<td style="background:${cellColor(v)}">${(v*100).toFixed(1)}%</td>`;
-                annual *= (1 + v);
-                hasAnnual = true;
-            } else {
-                html += `<td style="background:${cellColor(NaN)}">–</td>`;
-            }
-        });
-        const annualRet = hasAnnual ? annual - 1 : NaN;
-        html += `<td style="background:${cellColor(annualRet)};font-weight:600;">${isNaN(annualRet)?'–':(annualRet*100).toFixed(1)+'%'}</td>`;
-        html += `</tr>`;
+    let html = `<table><thead><tr>
+        <th>#</th><th>代码</th><th>名称</th><th>交易所</th><th style="text-align:right;">权重</th>
+    </tr></thead><tbody>`;
+    cons.forEach((c, i) => {
+        const w = safeNumber(c['权重%']);
+        html += `<tr>
+            <td>${i+1}</td>
+            <td>${c['代码'] ?? ''}</td>
+            <td>${c['名称'] ?? ''}</td>
+            <td class="text-muted">${c['交易所'] ?? ''}</td>
+            <td class="num">${isNaN(w) ? '--' : w.toFixed(2) + '%'}</td>
+        </tr>`;
     });
-
     html += '</tbody></table>';
-    document.getElementById('heatmapWrap').innerHTML = html;
+    wrap.innerHTML = html;
 }
 </script>
 </body>
