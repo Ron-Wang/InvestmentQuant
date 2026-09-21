@@ -285,6 +285,9 @@
             padding: 16px 16px 6px;
             border: 1px solid #1f2a3a;
         }
+        .chart-box.full-width {
+            margin-bottom: 24px;
+        }
         .chart-box .chart-title {
             font-size: 15px;
             font-weight: 600;
@@ -437,7 +440,7 @@
                 </div>
             </section>
 
-            <!-- ★ 新增：近一周增幅 TOP3 -->
+            <!-- ★ 近一周增幅 TOP3 -->
             <section class="rank-grid">
                 <div class="rank-card">
                     <div class="rank-title">
@@ -487,6 +490,15 @@
                     <div class="chart-title"><span><i class="fas fa-fire" style="color:#fc5c7d;"></i> 行业仓位热力</span><span class="subtitle">颜色越深仓位越高</span></div>
                     <div class="chart-container tall" id="heatmapChart"></div>
                 </div>
+            </div>
+
+            <!-- ★ 资产配置累计堆叠图（全宽） -->
+            <div class="chart-box full-width">
+                <div class="chart-title">
+                    <span><i class="fas fa-layer-group" style="color:#4a90d9;"></i> 资产配置累计堆叠</span>
+                    <span class="subtitle">股票 / 债券 / 货币基金 · 全历史累计</span>
+                </div>
+                <div class="chart-container tall" id="stackChart"></div>
             </div>
 
             <div class="table-wrap">
@@ -617,7 +629,7 @@
 
             setActiveTab(sheetName);
             updateKPI(latest);
-            renderWeekTop3(data);           // ★ 新增
+            renderWeekTop3(data);           // 近一周增幅 TOP3
             populateSelect(data);
             updateTable(data);
 
@@ -630,6 +642,7 @@
                 updateTreemap(latest);
                 updateCompareChart();
                 updateHeatmapChart(data);
+                updateStackChart(data);     // ★ 资产配置累计堆叠图
             }
 
             // 首次渲染延迟，确保 DOM 完成布局；切换 Tab 时直接绘制
@@ -661,7 +674,7 @@
         }
 
         // ================================================================
-        //  ★ 新增：近一周增幅 TOP3
+        //  近一周增幅 TOP3
         // ================================================================
 
         /** 找到「一周前」的那一行：优先取 <= 最新日期-7天 的最近一行；不足一周则退回到最早一行 */
@@ -948,6 +961,89 @@
                     label: { show: false },
                     emphasis: { itemStyle: { shadowBlur: 10 } }
                 }]
+            };
+            chart.setOption(option, true);
+            chart.resize();
+        }
+
+        // ================================================================
+        //  ★ 资产配置累计堆叠图（股票 / 债券 / 货币基金）
+        // ================================================================
+        function updateStackChart(data) {
+            var chart = getChart('stackChart');
+            if (!chart || !data || data.length === 0) return;
+
+            var dates = data.map(function(row) { return row[0]; });
+            var stockData = [];
+            var bondData = [];
+            var moneyData = [];
+
+            data.forEach(function(row) {
+                stockData.push(+(calcStockTotal(row) * 100).toFixed(2));
+                bondData.push(+((row[32] || 0) * 100).toFixed(2));
+                moneyData.push(+((row[33] || 0) * 100).toFixed(2));
+            });
+
+            var option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'cross', label: { backgroundColor: '#2a3a50' } },
+                    valueFormatter: function(v) { return v == null ? '—' : v + '%'; }
+                },
+                legend: {
+                    data: ['股票', '债券', '货币基金'],
+                    textStyle: { color: '#c8d8e8' },
+                    top: 0
+                },
+                grid: { left: '5%', right: '5%', bottom: '10%', top: '14%' },
+                xAxis: {
+                    type: 'category',
+                    data: dates,
+                    boundaryGap: false,
+                    axisLabel: { rotate: 30, fontSize: 10, color: '#8899b0' }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { formatter: '{value}%', color: '#8899b0' }
+                },
+                series: [
+                    {
+                        name: '股票',
+                        type: 'line',
+                        stack: 'total',
+                        smooth: true,
+                        showSymbol: false,
+                        lineStyle: { width: 1.5, color: '#4a90d9' },
+                        itemStyle: { color: '#4a90d9' },
+                        areaStyle: { opacity: 0.55, color: '#4a90d9' },
+                        emphasis: { focus: 'series' },
+                        data: stockData
+                    },
+                    {
+                        name: '债券',
+                        type: 'line',
+                        stack: 'total',
+                        smooth: true,
+                        showSymbol: false,
+                        lineStyle: { width: 1.5, color: '#f0c27f' },
+                        itemStyle: { color: '#f0c27f' },
+                        areaStyle: { opacity: 0.55, color: '#f0c27f' },
+                        emphasis: { focus: 'series' },
+                        data: bondData
+                    },
+                    {
+                        name: '货币基金',
+                        type: 'line',
+                        stack: 'total',
+                        smooth: true,
+                        showSymbol: false,
+                        lineStyle: { width: 1.5, color: '#4cd9a0' },
+                        itemStyle: { color: '#4cd9a0' },
+                        areaStyle: { opacity: 0.55, color: '#4cd9a0' },
+                        emphasis: { focus: 'series' },
+                        data: moneyData
+                    }
+                ]
             };
             chart.setOption(option, true);
             chart.resize();
