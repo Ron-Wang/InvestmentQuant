@@ -138,6 +138,110 @@
         .kpi-card .value.neutral { color: #f0c27f; }
         .kpi-card .sub { font-size: 11px; color: #5a6a80; }
 
+        /* ===== 近一周增幅 TOP3 ===== */
+        .rank-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+        .rank-card {
+            background: #141b26;
+            border: 1px solid #1f2a3a;
+            border-radius: 14px;
+            padding: 14px 16px 8px;
+        }
+        .rank-card .rank-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #c8d8e8;
+            margin-bottom: 8px;
+        }
+        .rank-card .rank-title i { margin-right: 6px; }
+        .rank-card .rank-sub {
+            font-size: 11px;
+            font-weight: 400;
+            color: #5a6a80;
+            white-space: nowrap;
+        }
+        .rank-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+        }
+        .rank-item + .rank-item { border-top: 1px dashed #1f2a3a; }
+        .rank-idx {
+            flex: 0 0 20px;
+            height: 20px;
+            line-height: 20px;
+            text-align: center;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #1f2a3a;
+            color: #8899b0;
+        }
+        .rank-item:nth-child(1) .rank-idx {
+            background: linear-gradient(135deg, #f0c27f, #e8a85c);
+            color: #0b0e17;
+        }
+        .rank-item:nth-child(2) .rank-idx {
+            background: #2a3a50;
+            color: #c8d8e8;
+        }
+        .rank-body { flex: 1; min-width: 0; }
+        .rank-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+        }
+        .rank-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #d0dcec;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .rank-val {
+            font-size: 14px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .rank-val.up { color: #4cd9a0; }
+        .rank-val.down { color: #fc6b6b; }
+        .rank-bar {
+            height: 4px;
+            background: #1f2a3a;
+            border-radius: 3px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        .rank-bar i {
+            display: block;
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #4cd9a0, #f0c27f);
+        }
+        .rank-extra {
+            font-size: 11px;
+            color: #7a8aa0;
+            margin-top: 3px;
+            font-variant-numeric: tabular-nums;
+        }
+        .rank-empty {
+            font-size: 12px;
+            color: #5a6a80;
+            padding: 12px 0;
+        }
+
         .controls {
             display: flex;
             flex-wrap: wrap;
@@ -263,6 +367,7 @@
 
         @media (max-width: 900px) {
             .chart-grid { grid-template-columns: 1fr; }
+            .rank-grid { grid-template-columns: 1fr; }
             .header { flex-direction: column; gap: 10px; }
             .header-right { text-align: left; width: 100%; }
             .kpi-grid { grid-template-columns: repeat(4, 1fr); }
@@ -332,6 +437,24 @@
                 </div>
             </section>
 
+            <!-- ★ 新增：近一周增幅 TOP3 -->
+            <section class="rank-grid">
+                <div class="rank-card">
+                    <div class="rank-title">
+                        <span><i class="fas fa-arrow-trend-up" style="color:#4cd9a0;"></i>近一周 · 绝对增幅 TOP3</span>
+                        <span class="rank-sub" id="absRange">—</span>
+                    </div>
+                    <div id="absRankList"></div>
+                </div>
+                <div class="rank-card">
+                    <div class="rank-title">
+                        <span><i class="fas fa-percent" style="color:#f0c27f;"></i>近一周 · 相对增幅 TOP3</span>
+                        <span class="rank-sub" id="relRange">—</span>
+                    </div>
+                    <div id="relRankList"></div>
+                </div>
+            </section>
+
             <div class="controls">
                 <label><i class="fas fa-tag"></i> 品种</label>
                 <select id="industrySelect"></select>
@@ -395,6 +518,10 @@
             '中证全债', '货币基金'
         ];
 
+        var INDUSTRY_COUNT = 31;            // 前 31 个为股票行业，其后为债券/货币
+        var WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+        var MIN_REL_BASE = 0.001;           // 相对增幅的最低基数（期初仓位 0.1%），防止低基数失真
+
         var allSheetData = {};
         var currentSheet = '';
         var currentData = [];
@@ -416,7 +543,7 @@
 
         function calcStockTotal(row) {
             var sum = 0;
-            for (var i = 1; i <= 31; i++) {
+            for (var i = 1; i <= INDUSTRY_COUNT; i++) {
                 sum += row[i] || 0;
             }
             return sum;
@@ -490,6 +617,7 @@
 
             setActiveTab(sheetName);
             updateKPI(latest);
+            renderWeekTop3(data);           // ★ 新增
             populateSelect(data);
             updateTable(data);
 
@@ -523,13 +651,134 @@
             $('kpiBond').textContent = formatPct(bond);
             $('kpiMoney').textContent = formatPct(money);
 
-            var sorted = INDUSTRIES.slice(0, 31).map(function(name, idx) {
+            var sorted = INDUSTRIES.slice(0, INDUSTRY_COUNT).map(function(name, idx) {
                 return { name: name, val: row[idx + 1] || 0 };
             }).sort(function(a, b) { return b.val - a.val; });
             if (sorted.length >= 2) {
                 $('kpiTop1').textContent = sorted[0].name + ' ' + formatPct(sorted[0].val);
                 $('kpiTop2').textContent = sorted[1].name + ' ' + formatPct(sorted[1].val);
             }
+        }
+
+        // ================================================================
+        //  ★ 新增：近一周增幅 TOP3
+        // ================================================================
+
+        /** 找到「一周前」的那一行：优先取 <= 最新日期-7天 的最近一行；不足一周则退回到最早一行 */
+        function getWeekAgoRow(data) {
+            if (!data || data.length < 2) return null;
+            var lastIdx = data.length - 1;
+            var latestTs = Date.parse(data[lastIdx][0]);
+            if (isNaN(latestTs)) {
+                // 日期无法解析时，退回按交易日估算（约 5 个交易日）
+                return data[Math.max(0, lastIdx - 5)];
+            }
+            var targetTs = latestTs - WEEK_MS;
+            for (var i = lastIdx - 1; i >= 0; i--) {
+                var ts = Date.parse(data[i][0]);
+                if (!isNaN(ts) && ts <= targetTs) return data[i];
+            }
+            return data[0];
+        }
+
+        /** 计算所有行业近一周的绝对 / 相对仓位变化 */
+        function computeWeekChange(data) {
+            var latest = getLatestRow(data);
+            var prev = getWeekAgoRow(data);
+            if (!latest || !prev || prev === latest) return null;
+
+            var items = [];
+            for (var i = 0; i < INDUSTRY_COUNT; i++) {
+                var oldV = prev[i + 1] || 0;
+                var nowV = latest[i + 1] || 0;
+                var diff = nowV - oldV;
+                items.push({
+                    name: INDUSTRIES[i],
+                    abs: diff * 100,                       // 绝对变化（百分点 pp）
+                    rel: oldV > 0 ? diff / oldV : null,    // 相对变化（小数）
+                    old: oldV,
+                    now: nowV
+                });
+            }
+            return { from: prev[0], to: latest[0], items: items };
+        }
+
+        /** 渲染 TOP3 列表 */
+        function renderRankItems(list, mode) {
+            if (!list || list.length === 0) {
+                return '<div class="rank-empty">近一周无行业仓位明显上升</div>';
+            }
+            var maxVal = 0;
+            list.forEach(function(d) {
+                var v = Math.abs(mode === 'abs' ? d.abs : d.rel * 100);
+                if (v > maxVal) maxVal = v;
+            });
+            if (maxVal <= 0) maxVal = 1;
+
+            return list.map(function(d, i) {
+                var raw = mode === 'abs' ? d.abs : d.rel * 100;
+                var width = Math.max(4, Math.round(Math.abs(raw) / maxVal * 100));
+                var main, extra;
+
+                if (mode === 'abs') {
+                    main = (d.abs >= 0 ? '+' : '') + d.abs.toFixed(2) + 'pp';
+                    extra = (d.rel === null)
+                        ? '期初 ' + (d.old * 100).toFixed(2) + '% → 期末 ' + (d.now * 100).toFixed(2) + '%'
+                        : '相对 ' + (d.rel >= 0 ? '+' : '') + (d.rel * 100).toFixed(1) + '%'
+                          + '　|　' + (d.old * 100).toFixed(2) + '% → ' + (d.now * 100).toFixed(2) + '%';
+                } else {
+                    main = (d.rel >= 0 ? '+' : '') + (d.rel * 100).toFixed(1) + '%';
+                    extra = '绝对 ' + (d.abs >= 0 ? '+' : '') + d.abs.toFixed(2) + 'pp'
+                          + '　|　' + (d.old * 100).toFixed(2) + '% → ' + (d.now * 100).toFixed(2) + '%';
+                }
+
+                return '' +
+                    '<div class="rank-item">' +
+                        '<span class="rank-idx">' + (i + 1) + '</span>' +
+                        '<div class="rank-body">' +
+                            '<div class="rank-line">' +
+                                '<span class="rank-name">' + d.name + '</span>' +
+                                '<span class="rank-val ' + (raw >= 0 ? 'up' : 'down') + '">' + main + '</span>' +
+                            '</div>' +
+                            '<div class="rank-bar"><i style="width:' + width + '%"></i></div>' +
+                            '<div class="rank-extra">' + extra + '</div>' +
+                        '</div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function renderWeekTop3(data) {
+            var absWrap = $('absRankList');
+            var relWrap = $('relRankList');
+            if (!absWrap || !relWrap) return;
+
+            var res = computeWeekChange(data);
+            if (!res) {
+                absWrap.innerHTML = '<div class="rank-empty">数据不足，无法计算周变化</div>';
+                relWrap.innerHTML = '<div class="rank-empty">数据不足，无法计算周变化</div>';
+                $('absRange').textContent = '—';
+                $('relRange').textContent = '—';
+                return;
+            }
+
+            var rangeText = res.from + ' → ' + res.to;
+            $('absRange').textContent = rangeText;
+            $('relRange').textContent = rangeText;
+
+            // 绝对增幅前三（单位：百分点 pp）
+            var absTop = res.items
+                .filter(function(d) { return d.abs > 0.005; })
+                .sort(function(a, b) { return b.abs - a.abs; })
+                .slice(0, 3);
+
+            // 相对增幅前三（期初仓位需 >= 0.1%，避免低基数导致的极端值）
+            var relTop = res.items
+                .filter(function(d) { return d.rel !== null && d.rel > 0 && d.old >= MIN_REL_BASE; })
+                .sort(function(a, b) { return b.rel - a.rel; })
+                .slice(0, 3);
+
+            absWrap.innerHTML = renderRankItems(absTop, 'abs');
+            relWrap.innerHTML = renderRankItems(relTop, 'rel');
         }
 
         // ---- 品种下拉（保留切换前的选择） ----
@@ -616,7 +865,7 @@
             var baseLatest = getLatestRow(allSheetData[baseKey] || []);
             if (!baseLatest) return;
 
-            var top10 = INDUSTRIES.slice(0, 31).map(function(name, i) {
+            var top10 = INDUSTRIES.slice(0, INDUSTRY_COUNT).map(function(name, i) {
                 return { name: name, val: baseLatest[i + 1] || 0 };
             }).sort(function(a, b) { return b.val - a.val; })
               .slice(0, 10)
@@ -658,7 +907,7 @@
             if (!chart || !data || data.length === 0) return;
             var latest = getLatestRow(data);
             if (!latest) return;
-            var sorted = INDUSTRIES.slice(0, 31).map(function(name, i) {
+            var sorted = INDUSTRIES.slice(0, INDUSTRY_COUNT).map(function(name, i) {
                 return { name: name, val: latest[i + 1] || 0 };
             }).sort(function(a, b) { return b.val - a.val; });
             var top15 = sorted.slice(0, 15).map(function(d) { return d.name; });
@@ -710,21 +959,23 @@
             var body = $('tableBody');
             if (!data || data.length === 0) return;
             var show = data.slice(-10).reverse();
+
+            // 表头：日期 + 31个行业 + 中证全债 + 货币基金 + 基金数（与表体列数保持一致）
             var headerHtml = '<tr><th>日期</th>';
-            INDUSTRIES.forEach(function(name) {
-                headerHtml += '<th>' + name + '</th>';
-            });
-            headerHtml += '<th>基金数</th></tr>';
+            for (var h = 0; h < INDUSTRY_COUNT; h++) {
+                headerHtml += '<th>' + INDUSTRIES[h] + '</th>';
+            }
+            headerHtml += '<th>中证全债</th><th>货币基金</th><th>基金数</th></tr>';
             head.innerHTML = headerHtml;
 
             var bodyHtml = '';
             show.forEach(function(row) {
                 bodyHtml += '<tr><td>' + row[0] + '</td>';
-                for (var i = 1; i <= 31; i++) {
-                    bodyHtml += '<td>' + (row[i] * 100).toFixed(2) + '%</td>';
+                for (var i = 1; i <= INDUSTRY_COUNT; i++) {
+                    bodyHtml += '<td>' + ((row[i] || 0) * 100).toFixed(2) + '%</td>';
                 }
-                bodyHtml += '<td>' + (row[32] * 100).toFixed(2) + '%</td>';
-                bodyHtml += '<td>' + (row[33] * 100).toFixed(2) + '%</td>';
+                bodyHtml += '<td>' + ((row[32] || 0) * 100).toFixed(2) + '%</td>';
+                bodyHtml += '<td>' + ((row[33] || 0) * 100).toFixed(2) + '%</td>';
                 bodyHtml += '<td>' + (row[34] || '') + '</td>';
                 bodyHtml += '</tr>';
             });
